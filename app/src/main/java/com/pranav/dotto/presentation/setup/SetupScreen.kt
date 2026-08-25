@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pranav.dotto.application.state.SetupConfig
 import com.pranav.dotto.domain.ai.AiDifficulty
+import com.pranav.dotto.presentation.components.StarField
 import com.pranav.dotto.presentation.theme.*
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -47,177 +48,179 @@ fun SetupScreen(
         label = "glow"
     )
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(DottoBackground)
-            .safeDrawingPadding() // CRITICAL: Fixes top/bottom padding issues
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Neon Animated Title
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "DOTTO",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
-                    modifier = Modifier.offset(y = 2.dp),
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "DOTTO",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = DottoPrimary,
-                    fontWeight = FontWeight.Black
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Rule Banner - Sleek & Floating
-            Surface(
-                color = DottoSurface.copy(alpha = 0.6f),
-                shape = CircleShape,
-                border = borderStroke(1.dp, DottoPrimary.copy(alpha = 0.2f)),
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = DottoPrimary, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Close boxes to capture turns and win!",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                }
-            }
-
-            // Main Settings Card - Glassmorphism
-            Surface(
-                color = DottoSurface.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(28.dp),
-                border = borderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                modifier = Modifier.fillMaxWidth()
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(DottoBackground)
+                    .safeDrawingPadding() // CRITICAL: Fixes top/bottom padding issues
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Name Section
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("PLAYER IDENTITY", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
-                        OutlinedTextField(
-                            value = config.humanName,
-                            onValueChange = { onConfigChange(config.copy(humanName = it)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = DottoPrimary,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(16.dp),
-                            placeholder = { Text("Enter tag...", color = Color.Gray) }
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    // Neon Animated Title
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "DOTTO",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
+                            modifier = Modifier.offset(y = 2.dp),
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "DOTTO",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = DottoPrimary,
+                            fontWeight = FontWeight.Black
                         )
                     }
-
-                    // Level Section
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("CHOOSE YOUR LEVEL", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SetupConfig.AVAILABLE_GRID_SIZES.forEachIndexed { index, size ->
-                                LevelBadge(
-                                    level = index + 1,
-                                    gridSize = size,
-                                    selected = config.gridDots == size,
-                                    onClick = { onConfigChange(config.copy(gridDots = size)) }
-                                )
-                            }
-                        }
-                    }
-
-                    // Difficulty Section
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("AI INTELLECT", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
+        
+                    Spacer(modifier = Modifier.height(8.dp))
+        
+                    // Rule Banner - Sleek & Floating
+                    Surface(
+                        color = DottoSurface.copy(alpha = 0.6f),
+                        shape = CircleShape,
+                        border = borderStroke(1.dp, DottoPrimary.copy(alpha = 0.2f)),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AiDifficulty.entries.forEach { difficulty ->
-                                FilterChip(
-                                    selected = config.aiDifficulty == difficulty,
-                                    onClick = { onConfigChange(config.copy(aiDifficulty = difficulty)) },
-                                    label = { Text(difficulty.name, fontSize = 12.sp) },
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = DottoPrimary,
-                                        selectedLabelColor = DottoBackground,
-                                        labelColor = Color.White
+                            Icon(Icons.Default.Info, contentDescription = null, tint = DottoPrimary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Close boxes to capture turns and win!",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+        
+                    // Main Settings Card - Glassmorphism
+                    Surface(
+                        color = DottoSurface.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(28.dp),
+                        border = borderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Name Section
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("PLAYER IDENTITY", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
+                                OutlinedTextField(
+                                    value = config.humanName,
+                                    onValueChange = { onConfigChange(config.copy(humanName = it)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = DottoPrimary,
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent
                                     ),
-                                    border = FilterChipDefaults.filterChipBorder(
-                                        enabled = true,
-                                        selected = config.aiDifficulty == difficulty,
-                                        borderColor = Color.White.copy(alpha = 0.2f),
-                                        selectedBorderColor = DottoPrimary
-                                    )
+                                    shape = RoundedCornerShape(16.dp),
+                                    placeholder = { Text("Enter tag...", color = Color.Gray) }
+                                )
+                            }
+        
+                            // Level Section
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("CHOOSE YOUR LEVEL", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    SetupConfig.AVAILABLE_GRID_SIZES.forEachIndexed { index, size ->
+                                        LevelBadge(
+                                            level = index + 1,
+                                            gridSize = size,
+                                            selected = config.gridDots == size,
+                                            onClick = { onConfigChange(config.copy(gridDots = size)) }
+                                        )
+                                    }
+                                }
+                            }
+        
+                            // Difficulty Section
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("AI INTELLECT", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    AiDifficulty.entries.forEach { difficulty ->
+                                        FilterChip(
+                                            selected = config.aiDifficulty == difficulty,
+                                            onClick = { onConfigChange(config.copy(aiDifficulty = difficulty)) },
+                                            label = { Text(difficulty.name, fontSize = 12.sp) },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = DottoPrimary,
+                                                selectedLabelColor = DottoBackground,
+                                                labelColor = Color.White
+                                            ),
+                                            border = FilterChipDefaults.filterChipBorder(
+                                                enabled = true,
+                                                selected = config.aiDifficulty == difficulty,
+                                                borderColor = Color.White.copy(alpha = 0.2f),
+                                                selectedBorderColor = DottoPrimary
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+        
+                            HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+        
+                            // Toggles
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Vibe (Sounds)", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                                Switch(
+                                    checked = config.soundEnabled,
+                                    onCheckedChange = { onConfigChange(config.copy(soundEnabled = it)) },
+                                    modifier = Modifier.scale(0.7f),
+                                    colors = SwitchDefaults.colors(checkedThumbColor = DottoPrimary)
+                                )
+                            }
+        
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Tactile (Haptics)", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                                Switch(
+                                    checked = config.hapticEnabled,
+                                    onCheckedChange = { onConfigChange(config.copy(hapticEnabled = it)) },
+                                    modifier = Modifier.scale(0.7f),
+                                    colors = SwitchDefaults.colors(checkedThumbColor = DottoPrimary)
                                 )
                             }
                         }
                     }
-
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
-
-                    // Toggles
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Vibe (Sounds)", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                        Switch(
-                            checked = config.soundEnabled,
-                            onCheckedChange = { onConfigChange(config.copy(soundEnabled = it)) },
-                            modifier = Modifier.scale(0.7f),
-                            colors = SwitchDefaults.colors(checkedThumbColor = DottoPrimary)
-                        )
+        
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        StarField(starCount = 47)
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Tactile (Haptics)", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                        Switch(
-                            checked = config.hapticEnabled,
-                            onCheckedChange = { onConfigChange(config.copy(hapticEnabled = it)) },
-                            modifier = Modifier.scale(0.7f),
-                            colors = SwitchDefaults.colors(checkedThumbColor = DottoPrimary)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Action Button 2.0
-            Button(
-                onClick = onStartGame,
+        
+                    // Action Button 2.0
+                    Button(
+                        onClick = onStartGame,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(68.dp)

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.pranav.dotto.application.state.DottoUiState
 import com.pranav.dotto.presentation.components.DottoBoard
 import com.pranav.dotto.presentation.components.ScorePanel
+import com.pranav.dotto.presentation.components.StarField
 import com.pranav.dotto.presentation.components.TurnIndicator
 import com.pranav.dotto.presentation.theme.*
 import com.pranav.dotto.domain.model.PlayerType
@@ -35,6 +37,7 @@ fun GameScreen(
     modifier: Modifier = Modifier
 ) {
     val gameState = state.gameState
+    var showAdPlaceholder by remember { mutableStateOf(true) }
 
     // Title Animation (Shared with SetupScreen)
     val infiniteTransition = rememberInfiniteTransition(label = "neon-title")
@@ -51,6 +54,7 @@ fun GameScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(DottoBackground)
             .safeDrawingPadding()
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -65,77 +69,77 @@ fun GameScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Far Left: Quit Button
-                IconButton(
-                    onClick = onNewGame,
+                Row(
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(DottoTertiary.copy(alpha = 0.15f), CircleShape)
-                        .border(1.dp, DottoTertiary.copy(alpha = 0.3f), CircleShape)
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Rounded.PowerSettingsNew,
-                        contentDescription = "Quit",
-                        tint = DottoTertiary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // Center: Title and Move Badge
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            "DOTTO",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.offset(y = 1.dp)
-                        )
-                        Text(
-                            "DOTTO",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = DottoPrimary,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                    Surface(
-                        color = Color.White.copy(alpha = 0.1f),
-                        shape = CircleShape,
-                        modifier = Modifier.padding(top = 2.dp)
+                    // Far Left: Quit Button
+                    IconButton(
+                        onClick = onNewGame,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(DottoTertiary.copy(alpha = 0.15f), CircleShape)
+                            .border(1.dp, DottoTertiary.copy(alpha = 0.3f), CircleShape)
                     ) {
-                        Text(
-                            text = "MOVE ${gameState.moveNumber}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                        Icon(
+                            Icons.Rounded.PowerSettingsNew,
+                            contentDescription = "Quit",
+                            tint = DottoTertiary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    // Center: Title and Move Badge
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                "DOTTO",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.offset(y = 1.dp)
+                            )
+                            Text(
+                                "DOTTO",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = DottoPrimary,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        Surface(
+                            color = Color.White.copy(alpha = 0.1f),
+                            shape = CircleShape,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Text(
+                                text = "MOVE ${gameState.moveNumber}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    // Far Right: Restart Button
+                    IconButton(
+                        onClick = onRestart,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(DottoSecondary.copy(alpha = 0.15f), CircleShape)
+                            .border(1.dp, DottoSecondary.copy(alpha = 0.3f), CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Replay,
+                            contentDescription = "Restart",
+                            tint = DottoSecondary,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
-
-                // Far Right: Restart Button
-                IconButton(
-                    onClick = onRestart,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(DottoSecondary.copy(alpha = 0.15f), CircleShape)
-                        .border(1.dp, DottoSecondary.copy(alpha = 0.3f), CircleShape)
-                ) {
-                    Icon(
-                        Icons.Rounded.Replay,
-                        contentDescription = "Restart",
-                        tint = DottoSecondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
             }
             
             // Orbiting Star Effect for the Header
@@ -154,7 +158,14 @@ fun GameScreen(
             gameState.currentPlayer?.type == PlayerType.HUMAN -> "YOUR TURN"
             else -> "${gameState.currentPlayer?.name ?: "Opponent"}'s turn"
         }
-        TurnIndicator(text = turnLabel)
+        
+        val isHumanTurn = gameState.currentPlayer?.type == PlayerType.HUMAN && !state.isAiThinking
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = if (isHumanTurn) Alignment.CenterStart else Alignment.CenterEnd
+        ) {
+            TurnIndicator(text = turnLabel, isHumanTurn = isHumanTurn)
+        }
 
         DottoBoard(
             gameState = gameState,
@@ -164,6 +175,55 @@ fun GameScreen(
             onLineTapped = onLineTapped,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Stars Holder Block
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            StarField(starCount = 57)
+        }
+
+        // Closeable Ad Container
+        if (showAdPlaceholder) {
+            Surface(
+                color = Color.White.copy(alpha = 0.05f),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        "GOOGLE PLAY AD SPACE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.3f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    // Close Button for Ads
+                    IconButton(
+                        onClick = { showAdPlaceholder = false },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Hide Ad",
+                            tint = Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

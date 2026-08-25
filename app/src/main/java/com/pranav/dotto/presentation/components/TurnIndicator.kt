@@ -21,7 +21,11 @@ import com.pranav.dotto.presentation.theme.DottoPrimary
 import com.pranav.dotto.presentation.theme.DottoSecondary
 
 @Composable
-fun TurnIndicator(text: String, modifier: Modifier = Modifier) {
+fun TurnIndicator(
+    text: String,
+    isHumanTurn: Boolean,
+    modifier: Modifier = Modifier
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.6f,
@@ -32,6 +36,8 @@ fun TurnIndicator(text: String, modifier: Modifier = Modifier) {
         ),
         label = "alpha"
     )
+
+    val baseColor = if (isHumanTurn) DottoPrimary else DottoSecondary
 
     AnimatedContent(
         targetState = text,
@@ -44,22 +50,15 @@ fun TurnIndicator(text: String, modifier: Modifier = Modifier) {
         Box(
             modifier = modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            DottoPrimary.copy(alpha = 0.2f * alpha),
-                            DottoSecondary.copy(alpha = 0.2f * alpha)
-                        )
-                    )
-                )
-                .border(1.dp, DottoPrimary.copy(alpha = 0.5f * alpha), RoundedCornerShape(20.dp))
+                .background(baseColor.copy(alpha = 0.15f * alpha))
+                .border(1.dp, baseColor.copy(alpha = 0.5f * alpha), RoundedCornerShape(20.dp))
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Text(
                 text = label.uppercase(),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary,
+                color = baseColor,
                 letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified
             )
         }
