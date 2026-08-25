@@ -15,10 +15,10 @@ private val LightColors = lightColorScheme(
     primary = DottoPrimary,
     secondary = DottoSecondary,
     tertiary = DottoTertiary,
-    background = Color(0xFFF7F8FC),
-    surface = Color(0xFFFFFFFF),
-    onBackground = Color(0xFF1B1D22),
-    onSurface = Color(0xFF1B1D22)
+    background = DottoBackground,
+    surface = DottoSurface,
+    onBackground = DottoOnBackground,
+    onSurface = DottoOnSurface
 )
 
 private val DarkColors = darkColorScheme(
@@ -32,10 +32,26 @@ private val DarkColors = darkColorScheme(
 )
 
 private val DottoTypography = Typography(
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 32.sp),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp),
-    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp)
+    headlineLarge = TextStyle(
+        fontWeight = FontWeight.Black,
+        fontSize = 42.sp,
+        letterSpacing = (-1).sp
+    ),
+    titleLarge = TextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        letterSpacing = 0.5.sp
+    ),
+    bodyLarge = TextStyle(
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 24.sp
+    ),
+    labelLarge = TextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        letterSpacing = 1.sp
+    )
 )
 
 @Composable

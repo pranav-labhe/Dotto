@@ -45,7 +45,8 @@ fun DottoApp(
             AnimatedContent(
                 targetState = state,
                 label = "dotto-navigation",
-                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) }
+                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
+                contentKey = { it::class }
             ) { currentState ->
                 when (currentState) {
                     is DottoUiState.Setup -> SetupScreen(
@@ -56,12 +57,14 @@ fun DottoApp(
                     is DottoUiState.Playing -> GameScreen(
                         state = currentState,
                         onLineTapped = viewModel::onLineSelected,
-                        onNewGame = viewModel::restart
+                        onNewGame = viewModel::restart,
+                        onRestart = viewModel::playAgainSameConfig
                     )
                     is DottoUiState.Result -> ResultScreen(
                         gameState = currentState.gameState,
                         onPlayAgain = viewModel::playAgainSameConfig,
-                        onNewSetup = viewModel::restart
+                        onNewSetup = viewModel::restart,
+                        onNextLevel = viewModel::startNextLevel
                     )
                 }
             }

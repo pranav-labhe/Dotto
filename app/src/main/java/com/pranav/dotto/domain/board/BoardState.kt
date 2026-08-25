@@ -6,22 +6,23 @@ import com.pranav.dotto.domain.model.PlayerId
 
 /**
  * Immutable snapshot of the physical board: which lines are drawn and who
- * owns which completed box. All derived queries (valid lines, box adjacency)
- * are computed from [BoardConfig] rather than stored, so the state stays
- * small and trivially comparable/serializable for later persistence/replay.
+ * owns which completed box.
  */
 data class BoardState(
     val config: BoardConfig,
-    val drawnLines: Set<Line> = emptySet(),
+    val lineOwners: Map<Line, PlayerId> = emptyMap(),
     val boxOwners: Map<BoxCoordinate, PlayerId> = emptyMap()
 ) {
-    fun isLineDrawn(line: Line): Boolean = line in drawnLines
+    /** Helper for logic that only cares if a line is drawn, not by whom. */
+    val drawnLines: Set<Line> get() = lineOwners.keys
 
-    fun withLineDrawn(line: Line): BoardState =
-        copy(drawnLines = drawnLines + line)
+    fun isLineDrawn(line: Line): Boolean = line in lineOwners
+
+    fun withLineDrawn(line: Line, playerId: PlayerId): BoardState =
+        copy(lineOwners = lineOwners + (line to playerId))
 
     fun withBoxesOwned(boxes: Map<BoxCoordinate, PlayerId>): BoardState =
         copy(boxOwners = boxOwners + boxes)
 
-    val isFull: Boolean get() = drawnLines.size >= config.totalLines
+    val isFull: Boolean get() = lineOwners.size >= config.totalLines
 }

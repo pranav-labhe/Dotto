@@ -94,6 +94,13 @@ class DottoViewModel(
         startGame()
     }
 
+    fun startNextLevel() {
+        val nextDots = (lastSetupConfig.gridDots + 1).coerceAtMost(7)
+        lastSetupConfig = lastSetupConfig.copy(gridDots = nextDots)
+        _uiState.value = DottoUiState.Setup(lastSetupConfig)
+        startGame()
+    }
+
     override fun onCleared() {
         super.onCleared()
         cancelAiWork()

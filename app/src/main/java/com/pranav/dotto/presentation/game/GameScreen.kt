@@ -1,23 +1,29 @@
 package com.pranav.dotto.presentation.game
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pranav.dotto.application.state.DottoUiState
 import com.pranav.dotto.presentation.components.DottoBoard
 import com.pranav.dotto.presentation.components.ScorePanel
 import com.pranav.dotto.presentation.components.TurnIndicator
-import com.pranav.dotto.presentation.theme.PlayerPresentation
+import com.pranav.dotto.presentation.theme.*
 import com.pranav.dotto.domain.model.PlayerType
 
 @Composable
@@ -25,23 +31,115 @@ fun GameScreen(
     state: DottoUiState.Playing,
     onLineTapped: (com.pranav.dotto.domain.model.Line) -> Unit,
     onNewGame: () -> Unit,
+    onRestart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val gameState = state.gameState
 
+    // Title Animation (Shared with SetupScreen)
+    val infiniteTransition = rememberInfiniteTransition(label = "neon-title")
+    val titleGlow by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .safeDrawingPadding()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("DOTTO", style = MaterialTheme.typography.titleLarge)
-            TextButton(onClick = onNewGame) { Text("New Game") }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Glassmorphism Header Bar with Orbiting Star
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                color = DottoSurface.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(4.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Far Left: Quit Button
+                IconButton(
+                    onClick = onNewGame,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(DottoTertiary.copy(alpha = 0.15f), CircleShape)
+                        .border(1.dp, DottoTertiary.copy(alpha = 0.3f), CircleShape)
+                ) {
+                    Icon(
+                        Icons.Rounded.PowerSettingsNew,
+                        contentDescription = "Quit",
+                        tint = DottoTertiary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Center: Title and Move Badge
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            "DOTTO",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.offset(y = 1.dp)
+                        )
+                        Text(
+                            "DOTTO",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = DottoPrimary,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Surface(
+                        color = Color.White.copy(alpha = 0.1f),
+                        shape = CircleShape,
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = "MOVE ${gameState.moveNumber}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                // Far Right: Restart Button
+                IconButton(
+                    onClick = onRestart,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(DottoSecondary.copy(alpha = 0.15f), CircleShape)
+                        .border(1.dp, DottoSecondary.copy(alpha = 0.3f), CircleShape)
+                ) {
+                    Icon(
+                        Icons.Rounded.Replay,
+                        contentDescription = "Restart",
+                        tint = DottoSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            }
+            
+            // Orbiting Star Effect for the Header
+            HeaderBorderStar(modifier = Modifier.matchParentSize())
         }
 
         ScorePanel(
@@ -65,6 +163,52 @@ fun GameScreen(
             enabled = !state.isAiThinking && gameState.currentPlayer?.type == PlayerType.HUMAN,
             onLineTapped = onLineTapped,
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.HeaderBorderStar(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "header-orbit")
+    val progress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "progress"
+    )
+
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val perimeter = 2 * (w + h)
+        val currentDist = progress * perimeter
+
+        val center = when {
+            currentDist < w -> Offset(currentDist, 0f)
+            currentDist < w + h -> Offset(w, currentDist - w)
+            currentDist < 2 * w + h -> Offset(w - (currentDist - (w + h)), h)
+            else -> Offset(0f, h - (currentDist - (2 * w + h)))
+        }
+
+        // Comet Shadow/Trail
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color.White.copy(alpha = 0.5f), Color.Transparent),
+                center = center,
+                radius = 40f
+            ),
+            center = center,
+            radius = 40f
+        )
+        
+        // Bright Star Core
+        drawCircle(
+            color = Color.White,
+            radius = 4f,
+            center = center
         )
     }
 }

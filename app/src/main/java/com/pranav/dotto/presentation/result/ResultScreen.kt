@@ -24,6 +24,7 @@ import com.pranav.dotto.domain.model.GameState
 import com.pranav.dotto.domain.model.GameStatus
 import com.pranav.dotto.domain.model.PlayerType
 import com.pranav.dotto.domain.util.GameUtils
+import com.pranav.dotto.presentation.theme.DottoBackground
 import com.pranav.dotto.presentation.theme.DottoPrimary
 import com.pranav.dotto.presentation.theme.DottoSecondary
 import kotlinx.coroutines.delay
@@ -34,6 +35,7 @@ fun ResultScreen(
     gameState: GameState,
     onPlayAgain: () -> Unit,
     onNewSetup: () -> Unit,
+    onNextLevel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val outcome = (gameState.status as? GameStatus.Finished)?.outcome
@@ -51,14 +53,8 @@ fun ResultScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
+            .background(DottoBackground)
+            .safeDrawingPadding()
     ) {
         if (isHumanWinner) {
             ConfettiEffect()
@@ -127,22 +123,28 @@ fun ResultScreen(
             }
 
             Button(
-                onClick = onPlayAgain,
+                onClick = if (isHumanWinner) onNextLevel else onPlayAgain,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("PLAY AGAIN", fontWeight = FontWeight.ExtraBold)
+                Text(
+                    text = if (isHumanWinner) "START NEXT LEVEL" else "PLAY AGAIN",
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
 
-            TextButton(
+            OutlinedButton(
                 onClick = onNewSetup,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f))
             ) {
-                Text("BACK TO SETUP", color = MaterialTheme.colorScheme.secondary)
+                Text("BACK TO SETUP", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
             }
         }
     }

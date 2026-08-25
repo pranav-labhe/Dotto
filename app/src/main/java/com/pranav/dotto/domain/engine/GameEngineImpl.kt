@@ -82,7 +82,7 @@ class GameEngineImpl(
         val events = mutableListOf<GameEvent>()
 
         val completed = rules.boxesCompletedBy(state.board, move.line)
-        val boardAfterLine = state.board.withLineDrawn(move.line)
+        val boardAfterLine = state.board.withLineDrawn(move.line, move.playerId)
         val boardAfterBoxes = if (completed.isNotEmpty()) {
             boardAfterLine.withBoxesOwned(completed.associateWith { move.playerId })
         } else {

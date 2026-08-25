@@ -130,10 +130,10 @@ fun DottoBoard(
             }
         }
 
-        // Drawn lines
-        gameState.board.drawnLines.forEach { line ->
+        // Drawn lines - colored by player
+        gameState.board.lineOwners.forEach { (line, ownerId) ->
             val progress = if (line == lastMoveLine) lineDrawProgress.value else 1f
-            drawLineShape(mapper, line, DottoOnBackground, strokeWidthPx = 10f, progress = progress)
+            drawLineShape(mapper, line, playerColor(ownerId), strokeWidthPx = 10f, progress = progress)
         }
 
         // Dots with glow
@@ -144,14 +144,14 @@ fun DottoBoard(
                 
                 // Outer glow
                 drawCircle(
-                    color = DottoDotColor.copy(alpha = dotGlowAlpha),
-                    radius = DOT_RADIUS_PX * dotGlowScale,
+                    color = Color.White.copy(alpha = dotGlowAlpha * 0.3f),
+                    radius = DOT_RADIUS_PX * dotGlowScale * 1.5f,
                     center = Offset(centerX, centerY)
                 )
                 
                 // Main dot
                 drawCircle(
-                    color = DottoDotColor,
+                    color = Color.White,
                     radius = DOT_RADIUS_PX,
                     center = Offset(centerX, centerY)
                 )
