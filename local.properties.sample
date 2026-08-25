@@ -1,0 +1,4 @@
+# Copy this file to local.properties and point it at your Android SDK.
+# This file is intentionally NOT the real local.properties (that's
+# machine-specific and gitignored); it exists only as a template.
+sdk.dir=/path/to/your/Android/sdk
