@@ -10,9 +10,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pranav.dotto.application.state.DottoUiState
+import com.pranav.dotto.infrastructure.persistence.DottoDatabase
 import com.pranav.dotto.presentation.game.DottoViewModel
 import com.pranav.dotto.presentation.game.GameScreen
 import com.pranav.dotto.presentation.result.ResultScreen
@@ -29,15 +32,22 @@ import com.pranav.dotto.presentation.theme.DottoTheme
  */
 @Composable
 fun DottoApp(
-    soundManager: SoundManager? = null,
-    viewModel: DottoViewModel = viewModel(
+    soundManager: SoundManager? = null
+) {
+    val context = LocalContext.current
+    val database = remember { DottoDatabase.getDatabase(context) }
+    val progressDao = remember { database.progressDao() }
+
+    val viewModel: DottoViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return DottoViewModel(soundManager = soundManager) as T
+                return DottoViewModel(
+                    soundManager = soundManager,
+                    progressDao = progressDao
+                ) as T
             }
         }
     )
-) {
     val state by viewModel.uiState.collectAsState()
 
     DottoTheme {
@@ -52,7 +62,9 @@ fun DottoApp(
                     is DottoUiState.Setup -> SetupScreen(
                         config = currentState.config,
                         onConfigChange = { newConfig -> viewModel.updateSetupConfig { newConfig } },
-                        onStartGame = { viewModel.startGame() }
+                        onStartGame = { viewModel.startGame() },
+                        totalScore = currentState.totalScore,
+                        highestLevel = currentState.highestLevel
                     )
                     is DottoUiState.Playing -> GameScreen(
                         state = currentState,

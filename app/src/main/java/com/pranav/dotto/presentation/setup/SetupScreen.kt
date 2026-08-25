@@ -34,7 +34,9 @@ fun SetupScreen(
     config: SetupConfig,
     onConfigChange: (SetupConfig) -> Unit,
     onStartGame: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    totalScore: Int = 0,
+    highestLevel: Int = 1
 ) {
     // Title Animation
     val infiniteTransition = rememberInfiniteTransition(label = "neon-title")
@@ -64,24 +66,37 @@ fun SetupScreen(
                     
                     // Neon Animated Title
                     Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "DOTTO",
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
-                            modifier = Modifier.offset(y = 2.dp),
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = "DOTTO",
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = DottoPrimary,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-        
-                    Spacer(modifier = Modifier.height(8.dp))
-        
-                    // Rule Banner - Sleek & Floating
+                Text(
+                    text = "DOTTO",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
+                    modifier = Modifier.offset(y = 2.dp),
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = "DOTTO",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = DottoPrimary,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            // Player Stats Section
+            Row(
+                modifier = Modifier.padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("TOTAL SCORE", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(totalScore.toString(), style = MaterialTheme.typography.titleMedium, color = DottoSecondary, fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("BEST LEVEL", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text("LVL $highestLevel", style = MaterialTheme.typography.titleMedium, color = DottoSecondary, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // Rule Banner - Sleek & Floating
                     Surface(
                         color = DottoSurface.copy(alpha = 0.6f),
                         shape = CircleShape,
@@ -146,7 +161,12 @@ fun SetupScreen(
                                             level = index + 1,
                                             gridSize = size,
                                             selected = config.gridDots == size,
-                                            onClick = { onConfigChange(config.copy(gridDots = size)) }
+                                            onClick = { 
+                                                onConfigChange(config.copy(
+                                                    gridDots = size,
+                                                    levelNumber = index + 1
+                                                )) 
+                                            }
                                         )
                                     }
                                 }

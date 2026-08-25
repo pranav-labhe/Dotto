@@ -11,7 +11,9 @@ import com.pranav.dotto.domain.model.Line
 sealed interface DottoUiState {
 
     data class Setup(
-        val config: SetupConfig = SetupConfig()
+        val config: SetupConfig = SetupConfig(),
+        val totalScore: Int = 0,
+        val highestLevel: Int = 1
     ) : DottoUiState
 
     data class Playing(

@@ -11,16 +11,21 @@ import com.pranav.dotto.domain.engine.GameEngine
 import com.pranav.dotto.domain.engine.GameEngineImpl
 import com.pranav.dotto.domain.events.GameEvent
 import com.pranav.dotto.domain.model.GameMove
+import com.pranav.dotto.domain.model.GameOutcome
 import com.pranav.dotto.domain.model.GameState
 import com.pranav.dotto.domain.model.GameStatus
 import com.pranav.dotto.domain.model.Line
 import com.pranav.dotto.domain.model.PlayerType
 import com.pranav.dotto.domain.player.HumanPlayerController
+import com.pranav.dotto.infrastructure.persistence.PlayerProgressEntity
+import com.pranav.dotto.infrastructure.persistence.ProgressDao
+import com.pranav.dotto.infrastructure.persistence.SavedMoveEntity
 import com.pranav.dotto.presentation.sound.SoundManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.util.Log
@@ -36,7 +41,8 @@ class DottoViewModel(
     private val engine: GameEngine = GameEngineImpl(),
     private val makeMove: MakeMoveUseCase = MakeMoveUseCase(engine),
     private val startNewGame: StartNewGame = StartNewGame(engine),
-    private val soundManager: SoundManager? = null
+    private val soundManager: SoundManager? = null,
+    private val progressDao: ProgressDao? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DottoUiState>(DottoUiState.Setup())
@@ -47,29 +53,112 @@ class DottoViewModel(
     private var aiJob: Job? = null
 
     private var lastSetupConfig: SetupConfig = SetupConfig()
+    private var currentTotalScore: Int = 0
+    private var highestLevelReached: Int = 1
+    private var nextPlayerIdToResume: String = "human_player"
+
+    init {
+        loadProgress()
+    }
+
+    private fun loadProgress() {
+        viewModelScope.launch {
+            progressDao?.getProgress()?.first()?.let { progress ->
+                lastSetupConfig = lastSetupConfig.copy(
+                    humanName = progress.playerName,
+                    levelNumber = progress.currentLevel,
+                    gridDots = (progress.currentLevel + 2).coerceIn(3, 10)
+                )
+                currentTotalScore = progress.totalScore
+                highestLevelReached = progress.highestLevelReached
+                nextPlayerIdToResume = progress.nextPlayerId
+                
+                // Update initial state with loaded config and stats
+                if (_uiState.value is DottoUiState.Setup) {
+                    _uiState.update { 
+                        DottoUiState.Setup(
+                            config = lastSetupConfig,
+                            totalScore = currentTotalScore,
+                            highestLevel = highestLevelReached
+                        ) 
+                    }
+                }
+            }
+        }
+    }
+
+    private fun saveProgress(nextMover: String? = null) {
+        viewModelScope.launch {
+            val progress = PlayerProgressEntity(
+                playerName = lastSetupConfig.humanName,
+                currentLevel = lastSetupConfig.levelNumber,
+                totalScore = currentTotalScore,
+                highestLevelReached = highestLevelReached,
+                nextPlayerId = nextMover ?: nextPlayerIdToResume
+            )
+            progressDao?.saveProgress(progress)
+        }
+    }
 
     fun updateSetupConfig(transform: (SetupConfig) -> SetupConfig) {
         val current = _uiState.value
         if (current is DottoUiState.Setup) {
-            _uiState.update { DottoUiState.Setup(transform(current.config)) }
+            _uiState.update { 
+                DottoUiState.Setup(
+                    config = transform(current.config),
+                    totalScore = currentTotalScore,
+                    highestLevel = highestLevelReached
+                ) 
+            }
         }
     }
 
     fun startGame() {
         val config = (_uiState.value as? DottoUiState.Setup)?.config ?: lastSetupConfig
         lastSetupConfig = config
+        saveProgress()
 
         // Cancel any stale AI work from a previous game before wiring up the new one.
         cancelAiWork()
 
-        val result = startNewGame(config)
-        humanController = result.humanController
-        aiController = result.aiController
+        viewModelScope.launch {
+            val result = startNewGame(config)
+            humanController = result.humanController
+            aiController = result.aiController
+            
+            var currentState = result.gameState
+            
+            // Replay saved moves if they belong to the current level
+            val savedMoves = progressDao?.getAllMoves() ?: emptyList()
+            if (savedMoves.isNotEmpty() && savedMoves.first().levelNumber == config.levelNumber) {
+                Log.d(TAG, "Replaying ${savedMoves.size} saved moves for Level ${config.levelNumber}")
+                savedMoves.forEach { moveEntity ->
+                    val line = if (moveEntity.lineType == "Horizontal") {
+                        Line.Horizontal(moveEntity.row, moveEntity.column)
+                    } else {
+                        Line.Vertical(moveEntity.row, moveEntity.column)
+                    }
+                    val moveResult = makeMove(currentState, GameMove(com.pranav.dotto.domain.model.PlayerId(moveEntity.playerId), line))
+                    if (moveResult.accepted) {
+                        currentState = moveResult.newState
+                    }
+                }
+            } else if (savedMoves.isNotEmpty()) {
+                Log.d(TAG, "Saved moves exist but belong to a different level. Starting fresh.")
+                // We don't clear moves here because only Refresh/Close have authority to flush.
+            } else {
+                logEvent(GameEvent.GameStarted(currentState.players.map { it.id }))
+            }
 
-        _uiState.value = DottoUiState.Playing(gameState = result.gameState)
-        logEvent(GameEvent.GameStarted(result.gameState.players.map { it.id }))
-
-        maybeTriggerAiTurn(result.gameState)
+            _uiState.value = DottoUiState.Playing(gameState = currentState)
+            
+            // If the game is already finished after replay, show result
+            if (currentState.status is GameStatus.Finished) {
+                _uiState.value = DottoUiState.Result(currentState)
+            } else {
+                maybeTriggerAiTurn(currentState)
+            }
+        }
     }
 
     /** Called by the UI when the human taps a line. */
@@ -86,19 +175,48 @@ class DottoViewModel(
 
     fun restart() {
         cancelAiWork()
-        _uiState.value = DottoUiState.Setup(lastSetupConfig)
+        viewModelScope.launch {
+            progressDao?.clearAllMoves()
+            _uiState.value = DottoUiState.Setup(
+                config = lastSetupConfig,
+                totalScore = currentTotalScore,
+                highestLevel = highestLevelReached
+            )
+        }
     }
 
     fun playAgainSameConfig() {
-        _uiState.value = DottoUiState.Setup(lastSetupConfig)
-        startGame()
+        cancelAiWork()
+        viewModelScope.launch {
+            progressDao?.clearAllMoves()
+            _uiState.value = DottoUiState.Setup(
+                config = lastSetupConfig,
+                totalScore = currentTotalScore,
+                highestLevel = highestLevelReached
+            )
+            startGame()
+        }
     }
 
     fun startNextLevel() {
-        val nextDots = (lastSetupConfig.gridDots + 1).coerceAtMost(7)
-        lastSetupConfig = lastSetupConfig.copy(gridDots = nextDots)
-        _uiState.value = DottoUiState.Setup(lastSetupConfig)
-        startGame()
+        val nextLevel = (lastSetupConfig.gridDots - 2) + 1
+        val nextDots = (nextLevel + 2).coerceAtMost(10) 
+        
+        lastSetupConfig = lastSetupConfig.copy(
+            levelNumber = nextLevel,
+            gridDots = nextDots
+        )
+        
+        cancelAiWork()
+        viewModelScope.launch {
+            progressDao?.clearAllMoves()
+            _uiState.value = DottoUiState.Setup(
+                config = lastSetupConfig,
+                totalScore = currentTotalScore,
+                highestLevel = highestLevelReached
+            )
+            startGame()
+        }
     }
 
     override fun onCleared() {
@@ -153,6 +271,29 @@ class DottoViewModel(
             return
         }
 
+        // Save move and next turn to DB
+        viewModelScope.launch {
+            val nextMoverId = result.newState.currentPlayerId?.value ?: move.playerId.value
+            nextPlayerIdToResume = nextMoverId
+            
+            progressDao?.insertMove(
+                SavedMoveEntity(
+                    levelNumber = lastSetupConfig.levelNumber,
+                    playerId = move.playerId.value,
+                    lineType = if (move.line is Line.Horizontal) "Horizontal" else "Vertical",
+                    row = when (val l = move.line) {
+                        is Line.Horizontal -> l.row
+                        is Line.Vertical -> l.row
+                    },
+                    column = when (val l = move.line) {
+                        is Line.Horizontal -> l.column
+                        is Line.Vertical -> l.column
+                    }
+                )
+            )
+            saveProgress(nextMoverId)
+        }
+
         result.events.forEach(::logEvent)
 
         // Play sounds based on move result
@@ -161,6 +302,23 @@ class DottoViewModel(
                 soundManager?.playScore(lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
             } else {
                 soundManager?.playMove(lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
+            }
+        }
+
+        if (result.newState.status is GameStatus.Finished) {
+            val humanPlayer = result.newState.players.firstOrNull { it.type == PlayerType.HUMAN }
+            if (humanPlayer != null) {
+                currentTotalScore += result.newState.scoreOf(humanPlayer.id)
+                
+                // If human won, update highest level
+                val outcome = (result.newState.status as? GameStatus.Finished)?.outcome
+                if (outcome is GameOutcome.Win && outcome.winnerId == humanPlayer.id) {
+                    highestLevelReached = maxOf(highestLevelReached, lastSetupConfig.levelNumber + 1)
+                }
+            }
+            viewModelScope.launch {
+                progressDao?.clearAllMoves()
+                saveProgress()
             }
         }
 

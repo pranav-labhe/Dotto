@@ -29,8 +29,8 @@ class StartNewGame(
     )
 
     operator fun invoke(config: SetupConfig): Result {
-        val humanId = PlayerId.new()
-        val aiId = PlayerId.new()
+        val humanId = PlayerId("human_player")
+        val aiId = PlayerId("dotto_ai")
 
         val human = Player(
             id = humanId,
