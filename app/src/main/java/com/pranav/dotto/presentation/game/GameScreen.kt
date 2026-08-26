@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.*
@@ -38,6 +38,11 @@ fun GameScreen(
 ) {
     val gameState = state.gameState
     var showAdPlaceholder by remember { mutableStateOf(true) }
+    
+    // Zoom/Pan State
+    var scale by remember(gameState.board.config) { mutableStateOf(1f) }
+    var offset by remember(gameState.board.config) { mutableStateOf(Offset.Zero) }
+    var isPanningMode by remember { mutableStateOf(false) }
 
     // Title Animation (Shared with SetupScreen)
     val infiniteTransition = rememberInfiniteTransition(label = "neon-title")
@@ -49,6 +54,16 @@ fun GameScreen(
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow"
+    )
+
+    val breathingGlow by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "breathing"
     )
 
     Column(
@@ -167,18 +182,50 @@ fun GameScreen(
             TurnIndicator(text = turnLabel, isHumanTurn = isHumanTurn)
         }
 
-        DottoBoard(
-            gameState = gameState,
-            recentlyCompletedBoxes = state.recentlyCompletedBoxes,
-            lastMoveLine = state.lastMoveLine,
-            enabled = !state.isAiThinking && gameState.currentPlayer?.type == PlayerType.HUMAN,
-            onLineTapped = onLineTapped,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            DottoBackground.copy(alpha = 0.1f * breathingGlow),
+                            Color.Transparent,
+                            DottoBackground.copy(alpha = 0.05f * breathingGlow)
+                        )
+                    )
+                )
+                .padding(8.dp)
+        ) {
+            // Subtle Glossy Sheen Overlay
+            Canvas(modifier = Modifier.matchParentSize()) {
+                val sheenBrush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.White.copy(alpha = 0.08f * breathingGlow),
+                        Color.Transparent
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, size.height)
+                )
+                drawRect(brush = sheenBrush)
+            }
+            
+            DottoBoard(
+                gameState = gameState,
+                recentlyCompletedBoxes = state.recentlyCompletedBoxes,
+                lastMoveLine = state.lastMoveLine,
+                enabled = !state.isAiThinking && gameState.currentPlayer?.type == PlayerType.HUMAN,
+                scale = scale,
+                offset = offset,
+                isPanningMode = isPanningMode,
+                onOffsetChange = { offset = it },
+                onScaleChange = { scale = it },
+                onLineTapped = onLineTapped,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Stars Holder Block
+        // Stars Holder Block with Overlapping Controls
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -186,6 +233,49 @@ fun GameScreen(
             contentAlignment = Alignment.Center
         ) {
             StarField(starCount = 57)
+
+            // Board Controls Row (Level 6+) - Overlapping with StarField
+            if (gameState.board.config.dotRows - 2 >= 6) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { scale = (scale * 1.2f).coerceAtMost(4.0f) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.ZoomIn, contentDescription = "Zoom In", tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(
+                            onClick = { isPanningMode = !isPanningMode },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.OpenWith,
+                                contentDescription = "Move",
+                                tint = if (isPanningMode) DottoPrimary else Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { 
+                                scale = (scale / 1.2f).coerceAtLeast(0.3f)
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.ZoomOut, contentDescription = "Zoom Out", tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
         }
 
         // Closeable Ad Container

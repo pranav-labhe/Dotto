@@ -18,7 +18,7 @@ data class SetupConfig(
         val AVAILABLE_GRID_SIZES = listOf(3, 4, 5, 6, 7)
         
         fun forLevel(level: Int): SetupConfig {
-            val dots = (level + 2).coerceIn(3, 10)
+            val dots = level + 2
             return SetupConfig(gridDots = dots, levelNumber = level)
         }
     }

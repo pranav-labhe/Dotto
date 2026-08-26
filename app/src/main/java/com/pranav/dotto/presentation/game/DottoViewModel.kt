@@ -103,9 +103,11 @@ class DottoViewModel(
     fun updateSetupConfig(transform: (SetupConfig) -> SetupConfig) {
         val current = _uiState.value
         if (current is DottoUiState.Setup) {
+            val nextConfig = transform(current.config)
+            lastSetupConfig = nextConfig // CRITICAL: Keep local cache sync'd with UI selection
             _uiState.update { 
                 DottoUiState.Setup(
-                    config = transform(current.config),
+                    config = nextConfig,
                     totalScore = currentTotalScore,
                     highestLevel = highestLevelReached
                 ) 
@@ -199,13 +201,16 @@ class DottoViewModel(
     }
 
     fun startNextLevel() {
-        val nextLevel = (lastSetupConfig.gridDots - 2) + 1
-        val nextDots = (nextLevel + 2).coerceAtMost(10) 
+        val currentDots = lastSetupConfig.gridDots
+        val nextLevel = (currentDots - 2) + 1
+        val nextDots = nextLevel + 2 
         
         lastSetupConfig = lastSetupConfig.copy(
             levelNumber = nextLevel,
             gridDots = nextDots
         )
+        
+        Log.d(TAG, "Starting Next Level: $nextLevel (${nextDots}x${nextDots})")
         
         cancelAiWork()
         viewModelScope.launch {
