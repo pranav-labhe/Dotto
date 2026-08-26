@@ -25,6 +25,7 @@ import com.pranav.dotto.presentation.components.DottoBoard
 import com.pranav.dotto.presentation.components.ScorePanel
 import com.pranav.dotto.presentation.components.StarField
 import com.pranav.dotto.presentation.components.TurnIndicator
+import com.pranav.dotto.presentation.components.DottoAdView
 import com.pranav.dotto.presentation.theme.*
 import com.pranav.dotto.domain.model.PlayerType
 
@@ -37,7 +38,8 @@ fun GameScreen(
     modifier: Modifier = Modifier
 ) {
     val gameState = state.gameState
-    var showAdPlaceholder by remember { mutableStateOf(true) }
+    var isAdVisible by remember { mutableStateOf(false) }
+    var isAdClosedByUser by remember { mutableStateOf(false) }
     
     // Zoom/Pan State
     var scale by remember(gameState.board.config) { mutableStateOf(1f) }
@@ -279,40 +281,44 @@ fun GameScreen(
         }
 
         // Closeable Ad Container
-        if (showAdPlaceholder) {
+        if (isAdVisible && !isAdClosedByUser) {
             Surface(
-                color = Color.White.copy(alpha = 0.05f),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                color = Color.Transparent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
+                    .wrapContentHeight()
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        "GOOGLE PLAY AD SPACE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.3f),
-                        fontWeight = FontWeight.Bold
+                    DottoAdView(
+                        onAdLoaded = { isAdVisible = true },
+                        onAdFailed = { isAdVisible = false }
                     )
                     
                     // Close Button for Ads
                     IconButton(
-                        onClick = { showAdPlaceholder = false },
+                        onClick = { isAdClosedByUser = true },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(24.dp)
+                            .padding(top = 2.dp, end = 2.dp)
+                            .size(20.dp)
+                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Hide Ad",
-                            tint = Color.White.copy(alpha = 0.4f),
-                            modifier = Modifier.size(16.dp)
+                            tint = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }
             }
+        } else if (!isAdClosedByUser) {
+            // Invisible loader that triggers the fetch
+            DottoAdView(
+                modifier = Modifier.size(0.dp),
+                onAdLoaded = { isAdVisible = true },
+                onAdFailed = { isAdVisible = false }
+            )
         }
     }
 }
