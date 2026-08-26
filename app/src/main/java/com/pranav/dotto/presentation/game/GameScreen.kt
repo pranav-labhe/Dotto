@@ -280,20 +280,23 @@ fun GameScreen(
             }
         }
 
-        // Closeable Ad Container
-        if (isAdVisible && !isAdClosedByUser) {
-            Surface(
-                color = Color.Transparent,
+        // Consolidated Ad Container
+        if (!isAdClosedByUser) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight()
+                    .wrapContentHeight(),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    DottoAdView(
-                        onAdLoaded = { isAdVisible = true },
-                        onAdFailed = { isAdVisible = false }
-                    )
-                    
+                DottoAdView(
+                    modifier = Modifier.fillMaxWidth().then(
+                        if (!isAdVisible) Modifier.height(50.dp) else Modifier.wrapContentHeight()
+                    ),
+                    onAdLoaded = { isAdVisible = true },
+                    onAdFailed = { isAdVisible = false }
+                )
+                
+                if (isAdVisible) {
                     // Close Button for Ads
                     IconButton(
                         onClick = { isAdClosedByUser = true },
@@ -312,13 +315,6 @@ fun GameScreen(
                     }
                 }
             }
-        } else if (!isAdClosedByUser) {
-            // Invisible loader that triggers the fetch
-            DottoAdView(
-                modifier = Modifier.size(0.dp),
-                onAdLoaded = { isAdVisible = true },
-                onAdFailed = { isAdVisible = false }
-            )
         }
     }
 }

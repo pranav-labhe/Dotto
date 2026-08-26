@@ -6,9 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import com.pranav.dotto.presentation.sound.SoundManager
 
 class MainActivity : ComponentActivity() {
@@ -18,14 +15,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         // Initialize AdMob
-        val backgroundScope = CoroutineScope(Dispatchers.IO)
-        backgroundScope.launch {
-            // Initialize the Google Mobile Ads SDK on a background thread.
-            MobileAds.initialize(this@MainActivity) {}
-        }
+        MobileAds.initialize(this) {}
 
         // Set up test device configuration
-        val testDeviceIds = listOf("b321eafa-78c3-4c8d-9715-1cdbf6bf94d7")
+        val testDeviceIds = listOf(
+            "b321eafa-78c3-4c8d-9715-1cdbf6bf94d7",
+            "79E8C4EC7E9D7411F5636C834CF319CE"
+        )
         val configuration = RequestConfiguration.Builder()
             .setTestDeviceIds(testDeviceIds)
             .build()

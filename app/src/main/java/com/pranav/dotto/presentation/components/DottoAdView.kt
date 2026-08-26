@@ -1,5 +1,6 @@
 package com.pranav.dotto.presentation.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,12 +22,15 @@ fun DottoAdView(
         factory = { context ->
             AdView(context).apply {
                 setAdSize(AdSize.BANNER)
+                // Live Ad Unit ID
                 adUnitId = "ca-app-pub-7601883112918707/9171712738"
                 adListener = object : AdListener() {
                     override fun onAdLoaded() {
+                        Log.d("DottoAdView", "Ad loaded successfully")
                         onAdLoaded()
                     }
                     override fun onAdFailedToLoad(error: LoadAdError) {
+                        Log.e("DottoAdView", "Ad failed to load: ${error.message}, code: ${error.code}")
                         onAdFailed()
                     }
                 }
