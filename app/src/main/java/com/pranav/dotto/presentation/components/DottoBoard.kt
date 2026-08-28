@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -63,6 +64,9 @@ fun DottoBoard(
     val coroutineScope = rememberCoroutineScope()
     val animatedOffset = remember { Animatable(offset, Offset.VectorConverter) }
     
+    val currentScale by rememberUpdatedState(scale)
+    val currentIsPanningMode by rememberUpdatedState(isPanningMode)
+
     LaunchedEffect(offset) {
         if (!animatedOffset.isRunning) animatedOffset.snapTo(offset)
     }
@@ -112,52 +116,92 @@ fun DottoBoard(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(enabled, config, isPanningMode) {
+                .pointerInput(enabled, config) {
                     if (!enabled) return@pointerInput
                     
-                    if (isPanningMode) {
-                        coroutineScope {
-                            detectTransformGestures { centroid, pan, zoom, _ ->
-                                val mapper = BoardGeometryMapper(config, size.width.toFloat(), size.height.toFloat(), PADDING_DP.dp.toPx(), isLarge)
-                                val boardWidth = mapper.dotX(config.dotColumns - 1) + PADDING_DP.dp.toPx()
-                                val boardHeight = mapper.dotY(config.dotRows - 1) + PADDING_DP.dp.toPx()
+                    val mapperInitial = BoardGeometryMapper(config, size.width.toFloat(), size.height.toFloat(), PADDING_DP.dp.toPx(), isLarge)
+                    val boardWidth = mapperInitial.dotX(config.dotColumns - 1) + PADDING_DP.dp.toPx()
+                    val boardHeight = mapperInitial.dotY(config.dotRows - 1) + PADDING_DP.dp.toPx()
+                    val minScaleToFit = minOf(size.width.toFloat() / boardWidth, size.height.toFloat() / boardHeight).coerceAtMost(1f)
+
+                    coroutineScope {
+                        awaitEachGesture {
+                            var zoomAccumulated = 1f
+                            var panAccumulated = Offset.Zero
+                            var pastTouchSlop = false
+                            val touchSlop = viewConfiguration.touchSlop
+                            
+                            awaitFirstDown(requireUnconsumed = false)
+                            
+                            var transformStarted = false
+                            
+                            do {
+                                val event = awaitPointerEvent()
+                                val canceled = event.changes.any { it.isConsumed }
                                 
-                                val minScaleToFit = minOf(size.width.toFloat() / boardWidth, size.height.toFloat() / boardHeight).coerceAtMost(1f)
-                                
-                                val oldScale = scale
-                                val newScale = (scale * zoom).coerceIn(minScaleToFit, 4f)
-                                
-                                var nextOffset = animatedOffset.value + pan + (centroid - animatedOffset.value) * (1 - newScale / oldScale)
-                                
-                                val minX = size.width.toFloat() - (boardWidth * newScale)
-                                val nextX = if (minX >= 0) minX / 2f else nextOffset.x.coerceIn(minX, 0f)
-                                
-                                val minY = size.height.toFloat() - (boardHeight * newScale)
-                                val nextY = if (minY >= 0) minY / 2f else nextOffset.y.coerceIn(minY, 0f)
-                                
-                                nextOffset = Offset(nextX, nextY)
-                                
-                                launch { animatedOffset.snapTo(nextOffset) }
-                                onScaleChange(newScale)
-                                onOffsetChange(nextOffset)
-                            }
-                        }
-                    } else {
-                        detectTapGestures { tapOffset ->
-                            val currentOff = animatedOffset.value
-                            val transformedTap = (tapOffset - currentOff) / scale
-                            val mapper = BoardGeometryMapper(
-                                config = config,
-                                canvasWidthPx = size.width.toFloat(),
-                                canvasHeightPx = size.height.toFloat(),
-                                paddingPx = PADDING_DP.dp.toPx(),
-                                isLargeLevel = isLarge
-                            )
-                            mapper.hitTestLine(transformedTap.x, transformedTap.y)?.let { line ->
-                                if (!gameState.board.isLineDrawn(line)) {
-                                    onLineTapped(line)
+                                if (!canceled) {
+                                    val zoomChange = event.calculateZoom()
+                                    val panChange = event.calculatePan()
+
+                                    if (!pastTouchSlop) {
+                                        zoomAccumulated *= zoomChange
+                                        panAccumulated += panChange
+                                        val panDistance = panAccumulated.getDistance()
+                                        if (Math.abs(1 - zoomAccumulated) > 0.05f || panDistance > touchSlop) {
+                                            pastTouchSlop = true
+                                        }
+                                    }
+
+                                    if (pastTouchSlop) {
+                                        val centroid = event.calculateCentroid(useCurrent = false)
+                                        // 2 fingers ALWAYS pan/zoom. 1 finger pans ONLY in isPanningMode.
+                                        if (event.changes.size >= 2 || currentIsPanningMode) {
+                                            if (zoomChange != 1f || panChange != Offset.Zero) {
+                                                val oldScale = currentScale
+                                                val newScale = (currentScale * zoomChange).coerceIn(minScaleToFit, 4f)
+                                                
+                                                var nextOffset = animatedOffset.value + panChange + (centroid - animatedOffset.value) * (1 - newScale / oldScale)
+                                                
+                                                val minX = size.width.toFloat() - (boardWidth * newScale)
+                                                val nextX = if (minX >= 0) minX / 2f else nextOffset.x.coerceIn(minX, 0f)
+                                                
+                                                val minY = size.height.toFloat() - (boardHeight * newScale)
+                                                val nextY = if (minY >= 0) minY / 2f else nextOffset.y.coerceIn(minY, 0f)
+                                                
+                                                nextOffset = Offset(nextX, nextY)
+                                                
+                                                launch { animatedOffset.snapTo(nextOffset) }
+                                                onScaleChange(newScale)
+                                                onOffsetChange(nextOffset)
+                                                
+                                                transformStarted = true
+                                            }
+                                            event.changes.forEach { it.consume() }
+                                        }
+                                    }
                                 }
-                            }
+
+                                if (!transformStarted && !pastTouchSlop && event.changes.size == 1) {
+                                    val change = event.changes[0]
+                                    if (change.changedToUp()) {
+                                        val tapOffset = change.position
+                                        val currentOff = animatedOffset.value
+                                        val transformedTap = (tapOffset - currentOff) / currentScale
+                                        val mapper = BoardGeometryMapper(
+                                            config = config,
+                                            canvasWidthPx = size.width.toFloat(),
+                                            canvasHeightPx = size.height.toFloat(),
+                                            paddingPx = PADDING_DP.dp.toPx(),
+                                            isLargeLevel = isLarge
+                                        )
+                                        mapper.hitTestLine(transformedTap.x, transformedTap.y)?.let { line ->
+                                            if (!gameState.board.isLineDrawn(line)) {
+                                                onLineTapped(line)
+                                            }
+                                        }
+                                    }
+                                }
+                            } while (event.changes.any { it.pressed })
                         }
                     }
                 }
@@ -216,7 +260,7 @@ fun DottoBoard(
     }
 }
 
-private const val PADDING_DP = 20
+private const val PADDING_DP = 16
 private const val DOT_RADIUS_PX = 9f
 
 private fun DrawScope.drawLineShape(mapper: BoardGeometryMapper, line: Line, color: Color, strokeWidthPx: Float, pathEffect: PathEffect? = null, progress: Float = 1f) {

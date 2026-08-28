@@ -20,15 +20,15 @@ class BoardGeometryMapper(
     private val usableHeight = canvasHeightPx - paddingPx * 2
 
     // For levels <= 4, board fits screen. 
-    // For levels >= 5, cell size is locked to what Level 5 was.
+    // For levels >= 5, cell size is locked to show approx 6 cells with a bleed hint.
     val cellWidth: Float = if (isLargeLevel) {
-        usableWidth / 6f // Level 5 (7 dots) has 6 spaces.
+        usableWidth / 6.2f 
     } else {
         usableWidth / (config.dotColumns - 1)
     }
     
     val cellHeight: Float = if (isLargeLevel) {
-        usableHeight / 6f
+        usableHeight / 6.2f
     } else {
         usableHeight / (config.dotRows - 1)
     }
