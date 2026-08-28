@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.*
@@ -25,6 +25,7 @@ import com.pranav.dotto.presentation.components.DottoBoard
 import com.pranav.dotto.presentation.components.ScorePanel
 import com.pranav.dotto.presentation.components.StarField
 import com.pranav.dotto.presentation.components.TurnIndicator
+import com.pranav.dotto.presentation.components.DottoAdView
 import com.pranav.dotto.presentation.theme.*
 import com.pranav.dotto.domain.model.PlayerType
 
@@ -37,7 +38,13 @@ fun GameScreen(
     modifier: Modifier = Modifier
 ) {
     val gameState = state.gameState
-    var showAdPlaceholder by remember { mutableStateOf(true) }
+    var isAdVisible by remember { mutableStateOf(false) }
+    var isAdClosedByUser by remember { mutableStateOf(false) }
+    
+    // Zoom/Pan State
+    var scale by remember(gameState.board.config) { mutableStateOf(1f) }
+    var offset by remember(gameState.board.config) { mutableStateOf(Offset.Zero) }
+    var isPanningMode by remember { mutableStateOf(false) }
 
     // Title Animation (Shared with SetupScreen)
     val infiniteTransition = rememberInfiniteTransition(label = "neon-title")
@@ -49,6 +56,16 @@ fun GameScreen(
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow"
+    )
+
+    val breathingGlow by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "breathing"
     )
 
     Column(
@@ -167,58 +184,147 @@ fun GameScreen(
             TurnIndicator(text = turnLabel, isHumanTurn = isHumanTurn)
         }
 
-        DottoBoard(
-            gameState = gameState,
-            recentlyCompletedBoxes = state.recentlyCompletedBoxes,
-            lastMoveLine = state.lastMoveLine,
-            enabled = !state.isAiThinking && gameState.currentPlayer?.type == PlayerType.HUMAN,
-            onLineTapped = onLineTapped,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Stars Holder Block
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            contentAlignment = Alignment.Center
+        // Consolidated Board and Controls Container to remove gaps
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.Top
         ) {
-            StarField(starCount = 57)
-        }
-
-        // Closeable Ad Container
-        if (showAdPlaceholder) {
-            Surface(
-                color = Color.White.copy(alpha = 0.05f),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        "GOOGLE PLAY AD SPACE",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.3f),
-                        fontWeight = FontWeight.Bold
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                DottoBackground.copy(alpha = 0.1f * breathingGlow),
+                                Color.Transparent,
+                                DottoBackground.copy(alpha = 0.05f * breathingGlow)
+                            )
+                        )
                     )
-                    
+                    .padding(top = 2.dp) // Removed horizontal padding to align with Header
+            ) {
+                // Subtle Glossy Sheen Overlay
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    val sheenBrush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = 0.08f * breathingGlow),
+                            Color.Transparent
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(size.width, size.height)
+                    )
+                    drawRect(brush = sheenBrush)
+                }
+
+                DottoBoard(
+                    gameState = gameState,
+                    recentlyCompletedBoxes = state.recentlyCompletedBoxes,
+                    lastMoveLine = state.lastMoveLine,
+                    enabled = !state.isAiThinking && gameState.currentPlayer?.type == PlayerType.HUMAN,
+                    scale = scale,
+                    offset = offset,
+                    isPanningMode = isPanningMode,
+                    onOffsetChange = { offset = it },
+                    onScaleChange = { scale = it },
+                    onLineTapped = onLineTapped,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Stars Holder Block with Overlapping Controls - Touches the board now
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                StarField(starCount = 57)
+
+                // Board Controls Row (Level 6+) - Overlapping with StarField
+                if (gameState.board.config.dotRows - 2 >= 6) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { scale = (scale * 1.2f).coerceAtMost(4.0f) },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ZoomIn,
+                                    contentDescription = "Zoom In",
+                                    tint = Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { isPanningMode = !isPanningMode },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.OpenWith,
+                                    contentDescription = "Move",
+                                    tint = if (isPanningMode) DottoPrimary else Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    scale = (scale / 1.2f).coerceAtLeast(0.3f)
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ZoomOut,
+                                    contentDescription = "Zoom Out",
+                                    tint = Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Consolidated Ad Container
+        if (!isAdClosedByUser) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                DottoAdView(
+                    modifier = Modifier.fillMaxWidth().then(
+                        if (!isAdVisible) Modifier.height(50.dp) else Modifier.wrapContentHeight()
+                    ),
+                    onAdLoaded = { isAdVisible = true },
+                    onAdFailed = { isAdVisible = false }
+                )
+                
+                if (isAdVisible) {
                     // Close Button for Ads
                     IconButton(
-                        onClick = { showAdPlaceholder = false },
+                        onClick = { isAdClosedByUser = true },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(24.dp)
+                            .padding(top = 2.dp, end = 2.dp)
+                            .size(20.dp)
+                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Hide Ad",
-                            tint = Color.White.copy(alpha = 0.4f),
-                            modifier = Modifier.size(16.dp)
+                            tint = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }

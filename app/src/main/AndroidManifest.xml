@@ -2,6 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
+    <queries>
+        <intent>
+            <action android:name="com.google.android.gms.ads.service.CACHE" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.gms.ads.service.START" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -14,14 +26,13 @@
 
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-7601883112918707~5248779593" />
 
         <!--
-            No <uses-permission> entries: Dotto requires zero network,
-            storage, or other permissions to play. This is intentional —
-            see "No Server" / airplane-mode requirement in the design brief.
+            Dotto gameplay itself requires no network or storage access.
+            INTERNET and ACCESS_NETWORK_STATE are used only for optional
+            advertising. Gameplay remains fully functional offline.
         -->
-
         <activity
             android:name="com.pranav.dotto.MainActivity"
             android:exported="true"

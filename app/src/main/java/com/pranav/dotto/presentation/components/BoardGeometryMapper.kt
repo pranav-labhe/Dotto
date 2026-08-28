@@ -13,13 +13,25 @@ class BoardGeometryMapper(
     private val config: BoardConfig,
     private val canvasWidthPx: Float,
     private val canvasHeightPx: Float,
-    private val paddingPx: Float
+    private val paddingPx: Float,
+    private val isLargeLevel: Boolean = false
 ) {
     private val usableWidth = canvasWidthPx - paddingPx * 2
     private val usableHeight = canvasHeightPx - paddingPx * 2
 
-    val cellWidth: Float = usableWidth / (config.dotColumns - 1)
-    val cellHeight: Float = usableHeight / (config.dotRows - 1)
+    // For levels <= 4, board fits screen. 
+    // For levels >= 5, cell size is locked to show approx 6 cells with a bleed hint.
+    val cellWidth: Float = if (isLargeLevel) {
+        usableWidth / 6.2f 
+    } else {
+        usableWidth / (config.dotColumns - 1)
+    }
+    
+    val cellHeight: Float = if (isLargeLevel) {
+        usableHeight / 6.2f
+    } else {
+        usableHeight / (config.dotRows - 1)
+    }
 
     fun dotX(column: Int): Float = paddingPx + column * cellWidth
     fun dotY(row: Int): Float = paddingPx + row * cellHeight
