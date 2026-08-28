@@ -12,8 +12,8 @@ android {
         applicationId = "com.pranav.dotto"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -23,6 +23,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
 
