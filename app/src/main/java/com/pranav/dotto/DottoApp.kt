@@ -64,7 +64,8 @@ fun DottoApp(
                         onConfigChange = { newConfig -> viewModel.updateSetupConfig { newConfig } },
                         onStartGame = { viewModel.startGame() },
                         totalScore = currentState.totalScore,
-                        highestLevel = currentState.highestLevel
+                        highestLevel = currentState.highestLevel,
+                        soundManager = soundManager
                     )
                     is DottoUiState.Playing -> GameScreen(
                         state = currentState,

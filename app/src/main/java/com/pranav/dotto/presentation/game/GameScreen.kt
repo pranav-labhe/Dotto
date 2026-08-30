@@ -1,9 +1,7 @@
 package com.pranav.dotto.presentation.game
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pranav.dotto.application.state.DottoUiState
 import com.pranav.dotto.presentation.components.DottoBoard
 import com.pranav.dotto.presentation.components.ScorePanel
@@ -208,7 +207,7 @@ fun GameScreen(
                     val sheenBrush = Brush.linearGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.White.copy(alpha = 0.08f * breathingGlow),
+                            Color(0xFFACA95D).copy(alpha = 0.08f * breathingGlow),
                             Color.Transparent
                         ),
                         start = Offset(0f, 0f),
@@ -230,6 +229,17 @@ fun GameScreen(
                     onLineTapped = onLineTapped,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                if (isHumanTurn) {
+                    Text(
+                        text = "TAP TO BRIDGE THE DOTS",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, letterSpacing = 1.sp),
+                        color = Color(0xFFAD582F).copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 8.dp, bottom = 4.dp)
+                    )
+                }
             }
 
             // Stars Holder Block with Overlapping Controls - Touches the board now
@@ -303,7 +313,6 @@ fun GameScreen(
                 horizontalAlignment = Alignment.End
             ) {
                 if (isAdVisible) {
-                if (isAdVisible) {
                     // Close Button for Ads - Back to original small size
                     IconButton(
                         onClick = { isAdClosedByUser = true },
@@ -319,7 +328,6 @@ fun GameScreen(
                             modifier = Modifier.size(12.dp)
                         )
                     }
-                }
                 }
 
                 Box(

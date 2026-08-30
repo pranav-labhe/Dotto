@@ -40,6 +40,20 @@ class SoundManager(context: Context) {
         }
     }
 
+    /** Modern digital 'ack' for map interactions */
+    fun playGridSelect(soundEnabled: Boolean) {
+        if (soundEnabled) {
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 45)
+        }
+    }
+
+    /** Modern digital chirp for UI settings */
+    fun playUISelect(soundEnabled: Boolean) {
+        if (soundEnabled) {
+            toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 40)
+        }
+    }
+
     fun release() {
         toneGenerator.release()
     }
