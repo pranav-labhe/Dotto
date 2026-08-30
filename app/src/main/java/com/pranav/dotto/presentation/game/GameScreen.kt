@@ -296,27 +296,19 @@ fun GameScreen(
 
         // Consolidated Ad Container
         if (!isAdClosedByUser) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
-                contentAlignment = Alignment.Center
+                horizontalAlignment = Alignment.End
             ) {
-                DottoAdView(
-                    modifier = Modifier.fillMaxWidth().then(
-                        if (!isAdVisible) Modifier.height(50.dp) else Modifier.wrapContentHeight()
-                    ),
-                    onAdLoaded = { isAdVisible = true },
-                    onAdFailed = { isAdVisible = false }
-                )
-                
                 if (isAdVisible) {
-                    // Close Button for Ads
+                if (isAdVisible) {
+                    // Close Button for Ads - Back to original small size
                     IconButton(
                         onClick = { isAdClosedByUser = true },
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 2.dp, end = 2.dp)
+                            .padding(bottom = 2.dp)
                             .size(20.dp)
                             .background(Color.Black.copy(alpha = 0.3f), CircleShape)
                     ) {
@@ -327,6 +319,20 @@ fun GameScreen(
                             modifier = Modifier.size(12.dp)
                         )
                     }
+                }
+                }
+
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    DottoAdView(
+                        modifier = Modifier.fillMaxWidth().then(
+                            if (!isAdVisible) Modifier.height(50.dp) else Modifier.wrapContentHeight()
+                        ),
+                        onAdLoaded = { isAdVisible = true },
+                        onAdFailed = { isAdVisible = false }
+                    )
                 }
             }
         }
