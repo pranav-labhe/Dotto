@@ -26,6 +26,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.util.Log
@@ -47,6 +50,13 @@ class DottoViewModel(
 
     private val _uiState = MutableStateFlow<DottoUiState>(DottoUiState.Setup())
     val uiState: StateFlow<DottoUiState> = _uiState.asStateFlow()
+
+    val soundEnabled: StateFlow<Boolean> = _uiState.map { state ->
+        when (state) {
+            is DottoUiState.Setup -> state.config.soundEnabled
+            else -> lastSetupConfig.soundEnabled
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     private var humanController: HumanPlayerController? = null
     private var aiController: AiPlayerController? = null

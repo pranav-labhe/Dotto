@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dottoMusic>
+    <!-- 1. Landing / Settings: Spacious, ambient, deep sub-bass -->
+    <track id="landing" tempo="68" root="D" scale="minor">
+        <bass waveform="triangle" octave="1" volume="0.55" />
+        <pad waveform="sine" attack="3.0" release="5.0" volume="0.2" />
+        <arpeggio pattern="1,5,8" noteLength="quarter" volume="0.1" />
+    </track>
+
+    <!-- 2. Game Screen: Driving arpeggios, focused rhythm -->
+    <track id="game" tempo="76" root="D" scale="minor">
+        <bass waveform="triangle" octave="1" volume="0.6" />
+        <pad waveform="sine" attack="1.0" release="2.0" volume="0.15" />
+        <arpeggio pattern="1,3,5,8,7,5" noteLength="eighth" volume="0.15" />
+    </track>
+
+    <!-- 3. Success: Bright arpeggios, uplifting -->
+    <track id="success" tempo="80" root="D" scale="dorian">
+        <bass waveform="sine" octave="2" volume="0.4" />
+        <pad waveform="sine" attack="0.5" release="2.0" volume="0.3" />
+        <arpeggio pattern="1,5,8,10,12" noteLength="sixteenth" volume="0.2" />
+    </track>
+
+    <!-- 4. Failure: Dark sine bass, somber -->
+    <track id="failure" tempo="60" root="D" scale="phrygian">
+        <bass waveform="sine" octave="0" volume="0.7" />
+        <pad waveform="sine" attack="5.0" release="8.0" volume="0.1" />
+        <arpeggio pattern="1,2,1" noteLength="half" volume="0.05" />
+    </track>
+</dottoMusic>

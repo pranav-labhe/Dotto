@@ -5,13 +5,34 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.VibrationEffect
 import android.os.Vibrator
+import com.pranav.dotto.infrastructure.audio.DottoMusicEngine
+import com.pranav.dotto.infrastructure.audio.DottoMusicParser
+import com.pranav.dotto.R
 
 /**
  * Low-latency audio and haptic feedback for immediate "eye-catching" interaction.
+ * Now includes the Dotto procedural music engine.
  */
 class SoundManager(context: Context) {
     private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
+    // Procedural Music Engine
+    private val musicParser = DottoMusicParser(context)
+    private val musicLibrary = musicParser.parse(R.xml.dotto_music)
+    private val musicEngine = DottoMusicEngine(musicLibrary)
+
+    fun startMusic(trackId: String, soundEnabled: Boolean) {
+        if (soundEnabled) {
+            musicEngine.play(trackId)
+        } else {
+            musicEngine.stop()
+        }
+    }
+
+    fun stopMusic() {
+        musicEngine.stop()
+    }
 
     fun playMove(soundEnabled: Boolean, hapticEnabled: Boolean) {
         if (soundEnabled) {
@@ -56,5 +77,6 @@ class SoundManager(context: Context) {
 
     fun release() {
         toneGenerator.release()
+        musicEngine.stop()
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -15,6 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pranav.dotto.application.state.DottoUiState
+import com.pranav.dotto.domain.model.GameOutcome
+import com.pranav.dotto.domain.model.GameStatus
+import com.pranav.dotto.domain.model.PlayerType
 import com.pranav.dotto.infrastructure.persistence.DottoDatabase
 import com.pranav.dotto.presentation.game.DottoViewModel
 import com.pranav.dotto.presentation.game.GameScreen
@@ -49,6 +53,28 @@ fun DottoApp(
         }
     )
     val state by viewModel.uiState.collectAsState()
+    val soundEnabled by viewModel.soundEnabled.collectAsState()
+
+    // Handle procedural music transitions based on App state
+    LaunchedEffect(state, soundEnabled) {
+        if (!soundEnabled) {
+            soundManager?.stopMusic()
+        } else {
+            when (val s = state) {
+                is DottoUiState.Setup -> soundManager?.startMusic("landing", true)
+                is DottoUiState.Playing -> soundManager?.startMusic("game", true)
+                is DottoUiState.Result -> {
+                    val outcome = (s.gameState.status as? GameStatus.Finished)?.outcome
+                    val humanPlayer = s.gameState.players.firstOrNull { it.type == PlayerType.HUMAN }
+                    if (outcome is GameOutcome.Win && outcome.winnerId == humanPlayer?.id) {
+                        soundManager?.startMusic("success", true)
+                    } else {
+                        soundManager?.startMusic("failure", true)
+                    }
+                }
+            }
+        }
+    }
 
     DottoTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
