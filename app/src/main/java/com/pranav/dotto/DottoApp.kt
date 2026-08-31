@@ -61,15 +61,16 @@ fun DottoApp(
             soundManager?.stopMusic()
         } else {
             when (val s = state) {
-                is DottoUiState.Setup -> soundManager?.startMusic("landing", true)
-                is DottoUiState.Playing -> soundManager?.startMusic("game", true)
+                is DottoUiState.Setup -> soundManager?.startMusic("landing", s.highestLevel, true)
+                is DottoUiState.Playing -> soundManager?.startMusic("game", s.gameState.board.config.dotRows, true)
                 is DottoUiState.Result -> {
                     val outcome = (s.gameState.status as? GameStatus.Finished)?.outcome
                     val humanPlayer = s.gameState.players.firstOrNull { it.type == PlayerType.HUMAN }
+                    val level = s.gameState.board.config.dotRows
                     if (outcome is GameOutcome.Win && outcome.winnerId == humanPlayer?.id) {
-                        soundManager?.startMusic("success", true)
+                        soundManager?.startMusic("success", level, true)
                     } else {
-                        soundManager?.startMusic("failure", true)
+                        soundManager?.startMusic("failure", level, true)
                     }
                 }
             }

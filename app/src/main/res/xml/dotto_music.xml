@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <dottoMusic>
-    <!-- 1. Landing / Settings: Spacious, ambient, deep sub-bass -->
-    <track id="landing" tempo="68" root="D" scale="minor">
-        <bass waveform="triangle" octave="1" volume="0.55" />
-        <pad waveform="sine" attack="3.0" release="5.0" volume="0.2" />
-        <arpeggio pattern="1,5,8" noteLength="quarter" volume="0.1" />
-    </track>
 
-    <!-- 2. Game Screen: Driving arpeggios, focused rhythm -->
-    <track id="game" tempo="76" root="D" scale="minor">
-        <bass waveform="triangle" octave="1" volume="0.6" />
-        <pad waveform="sine" attack="1.0" release="2.0" volume="0.15" />
-        <arpeggio pattern="1,3,5,8,7,5" noteLength="eighth" volume="0.15" />
+    <!-- 1. Landing / Settings: "Lofi/Chill" - Gen Z friendly -->
+    <track id="landing" tempo="60" root="D" scale="major">
+        <bass waveform="cosine" octave="1" volume="0.2" />
+        <pad waveform="sine" attack="3.0" release="6.0" volume="0.3" wobble="0.4" />
+        <arpeggio pattern="1,5,8,12,10,8,5,1,8,15,17,15,8,12,1,5,8,13,10,8" noteLength="seventh" volume="0.4" />
+    </track>
+    <!-- 1. Landing / Settings: Spacious, ambient, deep sub-bass
+      <track id="landing" tempo="68" root="D" scale="minor">
+          <bass waveform="sine" octave="1" volume="0.2" />
+          <pad waveform="sine" attack="3.0" release="5.0" volume="0.5" />
+          <arpeggio pattern="1,5,8,7,4,2,1,8,9,10,9,7" noteLength="quarter" volume="0.8" />
+      </track> -->
+
+    <!-- 2. Game Screen: Driving arpeggios, focused rhythm - Flow matched to Landing -->
+    <track id="game" tempo="72" root="D" scale="major">
+        <bass waveform="sine" octave="1" volume="0.25" />
+        <pad waveform="sine" attack="2.0" release="5.0" volume="0.3" wobble="0.8" />
+        <arpeggio pattern="7,9,12,14,16,17,19,17,16,14,12,7,9,12,14,16,21,19,16" noteLength="fifth" volume="0.5" />
     </track>
 
     <!-- 3. Success: Bright arpeggios, uplifting -->

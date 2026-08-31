@@ -22,9 +22,9 @@ class SoundManager(context: Context) {
     private val musicLibrary = musicParser.parse(R.xml.dotto_music)
     private val musicEngine = DottoMusicEngine(musicLibrary)
 
-    fun startMusic(trackId: String, soundEnabled: Boolean) {
+    fun startMusic(trackId: String, level: Int, soundEnabled: Boolean) {
         if (soundEnabled) {
-            musicEngine.play(trackId)
+            musicEngine.play(trackId, level)
         } else {
             musicEngine.stop()
         }

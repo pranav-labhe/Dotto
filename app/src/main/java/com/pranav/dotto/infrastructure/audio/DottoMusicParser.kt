@@ -47,7 +47,8 @@ class DottoMusicParser(private val context: Context) {
                         waveform = parser.getAttributeValue(null, "waveform") ?: "sine",
                         attack = parser.getAttributeValue(null, "attack")?.toFloat() ?: 2.0f,
                         release = parser.getAttributeValue(null, "release")?.toFloat() ?: 4.0f,
-                        volume = parser.getAttributeValue(null, "volume")?.toFloat() ?: 0.2f
+                        volume = parser.getAttributeValue(null, "volume")?.toFloat() ?: 0.2f,
+                        wobble = parser.getAttributeValue(null, "wobble")?.toFloat() ?: 0f
                     )
                     "arpeggio" -> {
                         val patternStr = parser.getAttributeValue(null, "pattern") ?: "1,5,8"
