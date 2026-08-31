@@ -67,280 +67,172 @@ fun GameScreen(
         label = "breathing"
     )
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(DottoBackground)
             .safeDrawingPadding()
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
+        // Original Scrollable Area (Invisible on standard devices)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // Glassmorphism Header Bar with Orbiting Star
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Surface(
-                color = DottoSurface.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(4.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
+            // Header Bar
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    color = DottoSurface.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(4.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onNewGame,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(DottoTertiary.copy(alpha = 0.15f), CircleShape)
+                                .border(1.dp, DottoTertiary.copy(alpha = 0.3f), CircleShape)
+                        ) {
+                            Icon(Icons.Rounded.PowerSettingsNew, "Quit", tint = DottoTertiary, modifier = Modifier.size(24.dp))
+                        }
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("DOTTO", style = MaterialTheme.typography.titleLarge, color = DottoPrimary.copy(alpha = 0.3f * titleGlow), fontWeight = FontWeight.Black, modifier = Modifier.offset(y = 1.dp))
+                                Text("DOTTO", style = MaterialTheme.typography.titleLarge, color = DottoPrimary, fontWeight = FontWeight.Black)
+                            }
+                            Surface(color = Color.White.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.padding(top = 2.dp)) {
+                                Text(text = "MOVE ${gameState.moveNumber}", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onRestart,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(DottoSecondary.copy(alpha = 0.15f), CircleShape)
+                                .border(1.dp, DottoSecondary.copy(alpha = 0.3f), CircleShape)
+                        ) {
+                            Icon(Icons.Rounded.Replay, "Restart", tint = DottoSecondary, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+                HeaderBorderStar(modifier = Modifier.matchParentSize())
+            }
+
+            ScorePanel(players = gameState.players, scores = gameState.scores, currentPlayerId = gameState.currentPlayerId, colorFor = PlayerPresentation::colorFor)
+
+            val turnLabel = when {
+                state.isAiThinking -> "${gameState.currentPlayer?.name ?: "Dotto"} is thinking…"
+                gameState.currentPlayer?.type == PlayerType.HUMAN -> "YOUR TURN"
+                else -> "${gameState.currentPlayer?.name ?: "Opponent"}'s turn"
+            }
+            val isHumanTurn = gameState.currentPlayer?.type == PlayerType.HUMAN && !state.isAiThinking
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = if (isHumanTurn) Alignment.CenterStart else Alignment.CenterEnd) {
+                TurnIndicator(text = turnLabel, isHumanTurn = isHumanTurn)
+            }
+
+            // Consolidated Board and Deep Space Buffer
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Top) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(DottoBackground.copy(alpha = 0.1f * breathingGlow), Color.Transparent, DottoBackground.copy(alpha = 0.05f * breathingGlow))
+                            )
+                        )
+                        .padding(top = 2.dp)
                 ) {
-                    // Far Left: Quit Button
-                    IconButton(
-                        onClick = onNewGame,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(DottoTertiary.copy(alpha = 0.15f), CircleShape)
-                            .border(1.dp, DottoTertiary.copy(alpha = 0.3f), CircleShape)
-                    ) {
-                        Icon(
-                            Icons.Rounded.PowerSettingsNew,
-                            contentDescription = "Quit",
-                            tint = DottoTertiary,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    Canvas(modifier = Modifier.matchParentSize()) {
+                        drawRect(brush = Brush.linearGradient(colors = listOf(Color.Transparent, Color(0xFFACA95D).copy(alpha = 0.08f * breathingGlow), Color.Transparent), start = Offset(0f, 0f), end = Offset(size.width, size.height)))
                     }
 
-                    // Center: Title and Move Badge
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                "DOTTO",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = DottoPrimary.copy(alpha = 0.3f * titleGlow),
-                                fontWeight = FontWeight.Black,
-                                modifier = Modifier.offset(y = 1.dp)
-                            )
-                            Text(
-                                "DOTTO",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = DottoPrimary,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
-                        Surface(
-                            color = Color.White.copy(alpha = 0.1f),
-                            shape = CircleShape,
-                            modifier = Modifier.padding(top = 2.dp)
-                        ) {
-                            Text(
-                                text = "MOVE ${gameState.moveNumber}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-
-                    // Far Right: Restart Button
-                    IconButton(
-                        onClick = onRestart,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(DottoSecondary.copy(alpha = 0.15f), CircleShape)
-                            .border(1.dp, DottoSecondary.copy(alpha = 0.3f), CircleShape)
-                    ) {
-                        Icon(
-                            Icons.Rounded.Replay,
-                            contentDescription = "Restart",
-                            tint = DottoSecondary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-            
-            // Orbiting Star Effect for the Header
-            HeaderBorderStar(modifier = Modifier.matchParentSize())
-        }
-
-        ScorePanel(
-            players = gameState.players,
-            scores = gameState.scores,
-            currentPlayerId = gameState.currentPlayerId,
-            colorFor = PlayerPresentation::colorFor
-        )
-
-        val turnLabel = when {
-            state.isAiThinking -> "${gameState.currentPlayer?.name ?: "Dotto"} is thinking…"
-            gameState.currentPlayer?.type == PlayerType.HUMAN -> "YOUR TURN"
-            else -> "${gameState.currentPlayer?.name ?: "Opponent"}'s turn"
-        }
-        
-        val isHumanTurn = gameState.currentPlayer?.type == PlayerType.HUMAN && !state.isAiThinking
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = if (isHumanTurn) Alignment.CenterStart else Alignment.CenterEnd
-        ) {
-            TurnIndicator(text = turnLabel, isHumanTurn = isHumanTurn)
-        }
-
-        // Consolidated Board and Controls Container to remove gaps
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.Top
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                DottoBackground.copy(alpha = 0.1f * breathingGlow),
-                                Color.Transparent,
-                                DottoBackground.copy(alpha = 0.05f * breathingGlow)
-                            )
-                        )
+                    DottoBoard(
+                        gameState = gameState,
+                        recentlyCompletedBoxes = state.recentlyCompletedBoxes,
+                        lastMoveLine = state.lastMoveLine,
+                        enabled = !state.isAiThinking && gameState.currentPlayer?.type == PlayerType.HUMAN,
+                        scale = scale, offset = offset, isPanningMode = isPanningMode,
+                        onOffsetChange = { offset = it }, onScaleChange = { scale = it }, onLineTapped = onLineTapped,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    .padding(top = 2.dp) // Removed horizontal padding to align with Header
-            ) {
-                // Subtle Glossy Sheen Overlay
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    val sheenBrush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color(0xFFACA95D).copy(alpha = 0.08f * breathingGlow),
-                            Color.Transparent
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width, size.height)
-                    )
-                    drawRect(brush = sheenBrush)
-                }
 
-                DottoBoard(
-                    gameState = gameState,
-                    recentlyCompletedBoxes = state.recentlyCompletedBoxes,
-                    lastMoveLine = state.lastMoveLine,
-                    enabled = !state.isAiThinking && gameState.currentPlayer?.type == PlayerType.HUMAN,
-                    scale = scale,
-                    offset = offset,
-                    isPanningMode = isPanningMode,
-                    onOffsetChange = { offset = it },
-                    onScaleChange = { scale = it },
-                    onLineTapped = onLineTapped,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (isHumanTurn) {
-                    Text(
-                        text = "TAP TO BRIDGE THE DOTS",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, letterSpacing = 1.sp),
-                        color = Color(0xFFAD582F).copy(alpha = 0.5f),
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 8.dp, bottom = 4.dp)
-                    )
-                }
-            }
-
-            // Stars Holder Block with Overlapping Controls - Touches the board now
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                StarField(starCount = 57)
-
-                // Board Controls Row (Level 6+) - Overlapping with StarField
-                if (gameState.board.config.dotRows - 2 >= 6) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.align(Alignment.TopCenter)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = { scale = (scale * 1.2f).coerceAtMost(4.0f) },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.ZoomIn,
-                                    contentDescription = "Zoom In",
-                                    tint = Color.White.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            IconButton(
-                                onClick = { isPanningMode = !isPanningMode },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.OpenWith,
-                                    contentDescription = "Move",
-                                    tint = if (isPanningMode) DottoPrimary else Color.White.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    scale = (scale / 1.2f).coerceAtLeast(0.3f)
-                                },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.ZoomOut,
-                                    contentDescription = "Zoom Out",
-                                    tint = Color.White.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Consolidated Ad Container
-        if (!isAdClosedByUser) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                horizontalAlignment = Alignment.End
-            ) {
-                if (isAdVisible) {
-                    // Close Button for Ads - Back to original small size
-                    IconButton(
-                        onClick = { isAdClosedByUser = true },
-                        modifier = Modifier
-                            .padding(bottom = 2.dp)
-                            .size(20.dp)
-                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Hide Ad",
-                            tint = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier.size(12.dp)
+                    if (isHumanTurn) {
+                        Text(
+                            text = "TAP 2 LINK DOTS",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 7.sp, letterSpacing = 1.sp),
+                            color = Color(0xFFAD582F).copy(alpha = 0.5f),
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 4.dp)
                         )
                     }
                 }
 
+                // Seamless Deep Space Section (Stars + Controls + Safety Divider)
                 Box(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(140.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    DottoAdView(
-                        modifier = Modifier.fillMaxWidth().then(
-                            if (!isAdVisible) Modifier.height(50.dp) else Modifier.wrapContentHeight()
-                        ),
-                        onAdLoaded = { isAdVisible = true },
-                        onAdFailed = { isAdVisible = false }
-                    )
+                    StarField(starCount = 80)
+
+                    // Controls (Top-Center of this box)
+                    if (gameState.board.config.dotRows - 2 >= 6) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { scale = (scale * 1.2f).coerceAtMost(4.0f) }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.ZoomIn, "Zoom In", tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                                }
+                                IconButton(onClick = { isPanningMode = !isPanningMode }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.OpenWith, "Move", tint = if (isPanningMode) DottoPrimary else Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                                }
+                                IconButton(onClick = { scale = (scale / 1.2f).coerceAtLeast(0.3f) }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.ZoomOut, "Zoom Out", tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    // Safety Buffer & Divider (Bottom-Center of this box)
+                    Column(
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(modifier = Modifier.height(16.dp)) // Buffer gap
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        Spacer(modifier = Modifier.height(8.dp)) // Final margin
+                    }
+                }
+            }
+        }
+
+        // Fixed Ad Section
+        if (!isAdClosedByUser) {
+            Column(modifier = Modifier.fillMaxWidth().wrapContentHeight(), horizontalAlignment = Alignment.End) {
+                if (isAdVisible) {
+                    IconButton(onClick = { isAdClosedByUser = true }, modifier = Modifier.padding(bottom = 2.dp).size(20.dp).background(Color.Black.copy(alpha = 0.3f), CircleShape)) {
+                        Icon(Icons.Default.Close, "Hide Ad", tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(12.dp))
+                    }
+                }
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    DottoAdView(modifier = Modifier.fillMaxWidth().then(if (!isAdVisible) Modifier.height(50.dp) else Modifier.wrapContentHeight()), onAdLoaded = { isAdVisible = true }, onAdFailed = { isAdVisible = false })
                 }
             }
         }
@@ -353,10 +245,7 @@ private fun BoxScope.HeaderBorderStar(modifier: Modifier = Modifier) {
     val progress by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
+        animationSpec = infiniteRepeatable(animation = tween(3000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
         label = "progress"
     )
 
@@ -365,30 +254,13 @@ private fun BoxScope.HeaderBorderStar(modifier: Modifier = Modifier) {
         val h = size.height
         val perimeter = 2 * (w + h)
         val currentDist = progress * perimeter
-
         val center = when {
             currentDist < w -> Offset(currentDist, 0f)
             currentDist < w + h -> Offset(w, currentDist - w)
             currentDist < 2 * w + h -> Offset(w - (currentDist - (w + h)), h)
             else -> Offset(0f, h - (currentDist - (2 * w + h)))
         }
-
-        // Comet Shadow/Trail
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Color.White.copy(alpha = 0.5f), Color.Transparent),
-                center = center,
-                radius = 40f
-            ),
-            center = center,
-            radius = 40f
-        )
-        
-        // Bright Star Core
-        drawCircle(
-            color = Color.White,
-            radius = 4f,
-            center = center
-        )
+        drawCircle(brush = Brush.radialGradient(colors = listOf(Color.White.copy(alpha = 0.5f), Color.Transparent), center = center, radius = 40f), center = center, radius = 40f)
+        drawCircle(color = Color.White, radius = 4f, center = center)
     }
 }
