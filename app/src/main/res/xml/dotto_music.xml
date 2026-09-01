@@ -3,7 +3,7 @@
 
     <!-- 1. Landing / Settings: "Lofi/Chill" - Gen Z friendly -->
     <track id="landing" tempo="60" root="D" scale="major">
-        <bass waveform="cosine" octave="1" volume="0.2" />
+        <bass waveform="sine" octave="2" volume="0.2" />
         <pad waveform="sine" attack="3.0" release="6.0" volume="0.3" wobble="0.4" />
         <arpeggio pattern="1,5,8,12,10,8,5,1,8,15,17,15,8,12,1,5,8,13,10,8" noteLength="seventh" volume="0.4" />
     </track>
@@ -15,10 +15,17 @@
       </track> -->
 
     <!-- 2. Game Screen: Driving arpeggios, focused rhythm - Flow matched to Landing -->
-    <track id="game" tempo="72" root="D" scale="major">
-        <bass waveform="sine" octave="1" volume="0.25" />
-        <pad waveform="sine" attack="2.0" release="5.0" volume="0.3" wobble="0.8" />
-        <arpeggio pattern="7,9,12,14,16,17,19,17,16,14,12,7,9,12,14,16,21,19,16" noteLength="fifth" volume="0.5" />
+    <track id="game" tempo="72" root="D" scale="minor">
+        <bass waveform="sine" octave="1" volume="0.5" />
+        <pad waveform="sine"
+            attack="2.5"
+            release="5.5"
+            volume="0.28"
+            wobble="0.65" />
+        <arpeggio
+            pattern="1,5,8,5,1,8,12,8,5,1,10,13,10,5,8,12,17,12,8,5"
+            noteLength="fifth"
+            volume="0.60" />
     </track>
 
     <!-- 3. Success: Bright arpeggios, uplifting -->

@@ -1,8 +1,6 @@
 package com.pranav.dotto.presentation.sound
 
 import android.content.Context
-import android.media.AudioManager
-import android.media.ToneGenerator
 import android.os.VibrationEffect
 import android.os.Vibrator
 import com.pranav.dotto.infrastructure.audio.DottoMusicEngine
@@ -14,15 +12,19 @@ import com.pranav.dotto.R
  * Now includes the Dotto procedural music engine.
  */
 class SoundManager(context: Context) {
-    private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
     // Procedural Music Engine
     private val musicParser = DottoMusicParser(context)
     private val musicLibrary = musicParser.parse(R.xml.dotto_music)
     private val musicEngine = DottoMusicEngine(musicLibrary)
+    
+    private var lastTrackId: String? = null
+    private var lastLevel: Int = 1
 
     fun startMusic(trackId: String, level: Int, soundEnabled: Boolean) {
+        lastTrackId = trackId
+        lastLevel = level
         if (soundEnabled) {
             musicEngine.play(trackId, level)
         } else {
@@ -33,28 +35,35 @@ class SoundManager(context: Context) {
     fun stopMusic() {
         musicEngine.stop()
     }
-
-    fun playMove(soundEnabled: Boolean, hapticEnabled: Boolean) {
+    
+    fun resumeMusic(soundEnabled: Boolean) {
+        val tid = lastTrackId ?: return
         if (soundEnabled) {
-            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 50)
+            musicEngine.play(tid, lastLevel)
+        }
+    }
+
+    fun playMove(isHuman: Boolean, soundEnabled: Boolean, hapticEnabled: Boolean) {
+        if (soundEnabled) {
+            musicEngine.triggerTap(880f, isHuman) // High A
         }
         if (hapticEnabled) {
             vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
 
-    fun playScore(soundEnabled: Boolean, hapticEnabled: Boolean) {
+    fun playScore(isHuman: Boolean, soundEnabled: Boolean, hapticEnabled: Boolean) {
         if (soundEnabled) {
-            toneGenerator.startTone(ToneGenerator.TONE_CDMA_PIP, 150)
+            musicEngine.triggerTap(1320f, isHuman) // High E
         }
         if (hapticEnabled) {
             vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
 
-    fun playWin(soundEnabled: Boolean, hapticEnabled: Boolean) {
+    fun playWin(isHuman: Boolean, soundEnabled: Boolean, hapticEnabled: Boolean) {
         if (soundEnabled) {
-            toneGenerator.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 500)
+            musicEngine.triggerTap(1760f, isHuman) // Very high A
         }
         if (hapticEnabled) {
             vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 200), -1))
@@ -64,19 +73,18 @@ class SoundManager(context: Context) {
     /** Modern digital 'ack' for map interactions */
     fun playGridSelect(soundEnabled: Boolean) {
         if (soundEnabled) {
-            toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 45)
+            musicEngine.triggerTap(1046.5f) // C6
         }
     }
 
     /** Modern digital chirp for UI settings */
     fun playUISelect(soundEnabled: Boolean) {
         if (soundEnabled) {
-            toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 40)
+            musicEngine.triggerTap(1174.6f) // D6
         }
     }
 
     fun release() {
-        toneGenerator.release()
         musicEngine.stop()
     }
 }

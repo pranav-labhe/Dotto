@@ -28,11 +28,25 @@ class DottoMusicEngine(private val library: MusicLibrary) {
     private var currentLevel: Int = 1
     
     // Voice states
-    private val bassOsc = SineWaveOscillator() // Force Sine for clean sub-bass
-    private val padOsc = SineWaveOscillator()
+    private var bassOsc: Oscillator = SineWaveOscillator() 
+    private var currentBassWaveform = "sine"
+    private var padOsc: Oscillator = SineWaveOscillator()
+    private var currentPadWaveform = "sine"
     private val padEnv = AdsrEnvelope()
-    private val arpOsc = SineWaveOscillator()
+    private var arpOsc: Oscillator = SineWaveOscillator()
     private val arpEnv = AdsrEnvelope()
+
+    // High-pitched interaction voice (Cyberpunk style)
+    private var interactionOsc: Oscillator = SineWaveOscillator()
+    private val interactionEnv = AdsrEnvelope()
+    private var interactionBaseFreq = 880f
+    private var interactionCurrentFreq = 880f
+    private var interactionSampleIdx = 0
+    private var interactionIsHuman = true
+    
+    @Volatile private var pendingTap = false
+    @Volatile private var pendingTapFreq = 880f
+    @Volatile private var pendingIsHuman = true
 
     // Effects: Spacious atmosphere (Delay)
     private val delayBuffer = FloatArray(sampleRate) // 1 second delay
@@ -59,25 +73,30 @@ class DottoMusicEngine(private val library: MusicLibrary) {
     private val lfoFreq = 0.4f // Slow 0.4Hz wobble
 
     init {
-        // Use a slightly larger buffer (2x min) for stability against system jitter
-        val trackBufferSize = bufferSize * 2
-        audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                    .setSampleRate(sampleRate)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build()
-            )
-            .setBufferSizeInBytes(trackBufferSize)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
+        ensureAudioTrack()
+    }
+
+    private fun ensureAudioTrack() {
+        if (audioTrack == null || audioTrack?.state == AudioTrack.STATE_UNINITIALIZED) {
+            val trackBufferSize = bufferSize * 2
+            audioTrack = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_GAME)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(trackBufferSize)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+        }
     }
 
     fun play(trackId: String, level: Int = 1) {
@@ -85,6 +104,19 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         currentTrack = config
         currentLevel = level
         
+        ensureAudioTrack()
+
+        // Update oscillators based on personality
+        if (config.bass.waveform != currentBassWaveform) {
+            bassOsc = createOscillator(config.bass.waveform)
+            currentBassWaveform = config.bass.waveform
+        }
+        if (config.pad.waveform != currentPadWaveform) {
+            padOsc = createOscillator(config.pad.waveform)
+            currentPadWaveform = config.pad.waveform
+        }
+        arpOsc = createOscillator("sine") // Arps stay clean sine for now
+
         // Update envelopes based on personality
         padEnv.attackTime = config.pad.attack
         padEnv.releaseTime = config.pad.release
@@ -93,6 +125,10 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         // Arpeggio envelope needs to be fast to prevent "tp" clicks while staying smooth
         arpEnv.attackTime = 0.01f 
         arpEnv.releaseTime = 0.1f
+        
+        // Interaction Envelope: Softer attack and longer release to be less harsh
+        interactionEnv.attackTime = 0.015f
+        interactionEnv.releaseTime = 0.2f
 
         // Clear targets and buffers to prevent "garbage noise" on transition
         targetBassFreq = 0f
@@ -107,6 +143,14 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         
         if (job == null || job?.isActive == false) {
             startLoop()
+        }
+    }
+
+    private fun createOscillator(waveform: String): Oscillator {
+        return when (waveform.lowercase()) {
+            "triangle" -> TriangleWaveOscillator()
+            "square" -> SquareWaveOscillator()
+            else -> SineWaveOscillator() // Default to Sine (handles "cosine" etc)
         }
     }
 
@@ -136,17 +180,21 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         val rootShift = (levelFactor / 5)
         val levelRoot = shiftRoot(config.root, rootShift)
 
-        // Update target frequencies only when they actually change (huge CPU saving)
-        if (sampleCount == 0L || targetBassFreq == 0f) {
-            targetBassFreq = noteToFreq(levelRoot, config.bass.octave + 1)
-            targetPadFreq = noteToFreq(levelRoot, config.bass.octave + 2)
+        // Update target frequencies. Recalculate if rootShift changes or initial.
+        val baseBassFreq = noteToFreq(levelRoot, config.bass.octave + 1)
+        val basePadFreq = noteToFreq(levelRoot, config.bass.octave + 2)
+        
+        if (targetBassFreq != baseBassFreq) {
+            targetBassFreq = baseBassFreq
+            targetPadFreq = basePadFreq
             if (cachedBassFreq == 0f) cachedBassFreq = targetBassFreq
             if (cachedPadFreq == 0f) cachedPadFreq = targetPadFreq
         }
 
         // SMOOTHING: Slew ALL frequencies towards targets (prevents clicking)
-        cachedBassFreq += (targetBassFreq - cachedBassFreq) * 0.001f // Very slow for bass
-        cachedPadFreq += (targetPadFreq - cachedPadFreq) * 0.001f
+        // Increased speed (0.001 -> 0.05) to make level transitions audible
+        cachedBassFreq += (targetBassFreq - cachedBassFreq) * 0.05f 
+        cachedPadFreq += (targetPadFreq - cachedPadFreq) * 0.05f
         
         // LFO Update
         lfoPhase += 2f * Math.PI.toFloat() * lfoFreq / sampleRate
@@ -200,12 +248,59 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         val arp = arpOsc.nextSample(cachedArpFreq + wobbleOffset, sampleRate) * 
                   arpEnv.nextLevel(sampleRate) * 
                   config.arpeggio.volume
+                  
+        // Trigger interaction sounds on quantization grid
+        if (sampleCount % samplesPerArp == 0L) {
+            if (pendingTap) {
+                interactionBaseFreq = pendingTapFreq
+                interactionIsHuman = pendingIsHuman
+                
+                // Different character for Player vs Dotto
+                interactionOsc = SineWaveOscillator() // Use Sine for both to be less harsh
+                
+                if (interactionIsHuman) {
+                    interactionCurrentFreq = interactionBaseFreq * 0.9f // Subtler sweep
+                } else {
+                    interactionCurrentFreq = interactionBaseFreq * 1.1f // Subtler sweep
+                }
+                
+                interactionSampleIdx = 0
+                interactionEnv.gate(on = true, retrigger = false)
+                pendingTap = false
+            }
+        }
+        
+        // Auto-gate off interaction after a short duration
+        if (sampleCount % samplesPerArp == (samplesPerArp / 2).toLong()) {
+            interactionEnv.gate(on = false)
+        }
+
+        // Pitch Sweep Logic: Cyberpunk Character (Softer)
+        if (interactionEnv.isActive()) {
+            val sweepDurationSamples = (sampleRate * 0.1f).toInt() // 100ms sweep
+            if (interactionSampleIdx < sweepDurationSamples) {
+                val progress = interactionSampleIdx.toFloat() / sweepDurationSamples
+                if (interactionIsHuman) {
+                    // Ascending Power-up for Player
+                    interactionCurrentFreq = interactionBaseFreq * (0.9f + 0.1f * progress)
+                } else {
+                    // Descending Power-down for Dotto
+                    interactionCurrentFreq = interactionBaseFreq * (1.1f - 0.1f * progress)
+                }
+            } else {
+                interactionCurrentFreq = interactionBaseFreq
+            }
+            interactionSampleIdx++
+        }
+
+        val tap = interactionOsc.nextSample(interactionCurrentFreq, sampleRate) * 
+                  interactionEnv.nextLevel(sampleRate)
 
         sampleCount++
 
         // Mixer: Keep Bass separate from Effects to prevent "noise mud"
-        // Lowered gain to 0.3f to provide even more headroom against "tp" clipping
-        val melodicSum = (pad + arp) * 0.3f
+        // Lowered tap volume significantly to 0.15f
+        val melodicSum = (pad + arp + tap * 0.15f) * 0.2f
         
         // Effects: Spacious atmosphere (Delay) - ONLY for pads and arps
         val delayReadIdx = (delayWriteIdx + 1) % delayBuffer.size
@@ -217,16 +312,28 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         delayBuffer[delayWriteIdx] = spatialOut
         delayWriteIdx = (delayWriteIdx + 1) % delayBuffer.size
 
-        // Final Mix: Pure Dry Bass + Spatial Melody
-        val mixed = (bass * 0.3f) + spatialOut
+        // Final Mix: Dry Bass + Spatial Melody
+        // Adjusted Bass gain (0.6 -> 0.4) for better balance and headroom
+        val mixed = (bass * 0.4f) + spatialOut
         
         // DC Blocker / High-pass Filter
         val out = hpAlpha * (lastOut + mixed - lastIn)
         lastIn = mixed
         lastOut = out
         
-        // Final Soft Limiter (Safe range to prevent physical speaker rattle)
-        return out.coerceIn(-0.9f, 0.9f)
+        // Final Soft Limiter to prevent "krrrrrrrrrr" (hard digital clipping)
+        return softLimit(out)
+    }
+
+    private fun softLimit(x: Float): Float {
+        // Tanh-like soft clipping to prevent hard edges at 1.0/-1.0
+        return if (x > 0.7f) {
+            0.7f + (x - 0.7f) * 0.3f / (1f + (x - 0.7f))
+        } else if (x < -0.7f) {
+            -0.7f + (x + 0.7f) * 0.3f / (1f + (-x - 0.7f))
+        } else {
+            x
+        }.coerceIn(-0.95f, 0.95f)
     }
 
     private fun noteToFreq(root: String, octave: Int, interval: Int = 0): Float {
@@ -261,5 +368,12 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         audioTrack?.stop()
         audioTrack?.release()
         audioTrack = null
+    }
+
+    /** Triggers a high-pitched ping aligned with the music rhythm */
+    fun triggerTap(frequency: Float, isHuman: Boolean = true) {
+        pendingTapFreq = frequency
+        pendingIsHuman = isHuman
+        pendingTap = true
     }
 }
