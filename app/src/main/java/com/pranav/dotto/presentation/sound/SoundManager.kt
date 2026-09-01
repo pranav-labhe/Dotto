@@ -85,6 +85,6 @@ class SoundManager(context: Context) {
     }
 
     fun release() {
-        musicEngine.stop()
+        musicEngine.release()
     }
 }

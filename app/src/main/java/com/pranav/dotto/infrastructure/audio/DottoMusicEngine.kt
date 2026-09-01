@@ -365,9 +365,16 @@ class DottoMusicEngine(private val library: MusicLibrary) {
 
     fun stop() {
         job?.cancel()
+        job = null
         audioTrack?.stop()
         audioTrack?.release()
         audioTrack = null
+    }
+
+    /** Releases all resources and cancels the synthesis scope */
+    fun release() {
+        stop()
+        scope.cancel()
     }
 
     /** Triggers a high-pitched ping aligned with the music rhythm */
