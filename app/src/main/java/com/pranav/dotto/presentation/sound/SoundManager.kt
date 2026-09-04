@@ -48,13 +48,13 @@ class SoundManager(context: Context) {
             musicEngine.triggerTap(880f, isHuman) // High A
         }
         if (hapticEnabled) {
-            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
 
     fun playScore(isHuman: Boolean, soundEnabled: Boolean, hapticEnabled: Boolean) {
         if (soundEnabled) {
-            musicEngine.triggerTap(1320f, isHuman) // High E
+            musicEngine.triggerTap(440.0f, isHuman, isScore = true) // Lower A4 Chime
         }
         if (hapticEnabled) {
             vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
@@ -63,7 +63,7 @@ class SoundManager(context: Context) {
 
     fun playWin(isHuman: Boolean, soundEnabled: Boolean, hapticEnabled: Boolean) {
         if (soundEnabled) {
-            musicEngine.triggerTap(1760f, isHuman) // Very high A
+            musicEngine.triggerTap(659.25f, isHuman, isScore = true) // E5 Chime
         }
         if (hapticEnabled) {
             vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 100, 50, 200), -1))

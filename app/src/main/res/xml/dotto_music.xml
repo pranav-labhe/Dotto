@@ -16,7 +16,7 @@
 
     <!-- 2. Game Screen: Driving arpeggios, focused rhythm - Flow matched to Landing -->
     <track id="game" tempo="72" root="D" scale="minor">
-        <bass waveform="sine" octave="1" volume="0.5" />
+        <bass waveform="sine" octave="1" volume="0.4" />
         <pad waveform="sine"
             attack="2.5"
             release="5.5"

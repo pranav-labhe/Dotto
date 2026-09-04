@@ -24,6 +24,7 @@ class DottoMusicEngine(private val library: MusicLibrary) {
     private var job: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
+    private var currentTrackId: String? = null
     private var currentTrack: TrackConfig? = null
     private var currentLevel: Int = 1
     
@@ -37,21 +38,31 @@ class DottoMusicEngine(private val library: MusicLibrary) {
     private val arpEnv = AdsrEnvelope()
 
     // High-pitched interaction voice (Cyberpunk style)
-    private var interactionOsc: Oscillator = SineWaveOscillator()
+    private val interactionSine = SineWaveOscillator()
+    private var interactionOsc: Oscillator = interactionSine
+    
     private val interactionEnv = AdsrEnvelope()
+    
+    // Dedicated sharp ping for scores to prevent "hiding"
+    private val scorePingOsc = TriangleWaveOscillator()
+    private val scorePingEnv = AdsrEnvelope()
+    
     private var interactionBaseFreq = 880f
     private var interactionCurrentFreq = 880f
     private var interactionSampleIdx = 0
     private var interactionIsHuman = true
+    private var interactionIsScore = false
     
     @Volatile private var pendingTap = false
     @Volatile private var pendingTapFreq = 880f
     @Volatile private var pendingIsHuman = true
+    @Volatile private var pendingIsScore = false
+    @Volatile private var pendingScorePing = false
 
     // Effects: Spacious atmosphere (Delay)
     private val delayBuffer = FloatArray(sampleRate) // 1 second delay
     private var delayWriteIdx = 0
-    private var feedback = 0.5f
+    private var feedback = 0.35f
 
     // DC Blocker / High-pass to prevent "garbage vibration" on old speakers
     private var lastOut = 0f
@@ -101,6 +112,13 @@ class DottoMusicEngine(private val library: MusicLibrary) {
 
     fun play(trackId: String, level: Int = 1) {
         val config = library.tracks[trackId] ?: return
+        
+        // If we are already playing this song and level, DON'T reset anything.
+        if (currentTrackId == trackId && currentLevel == level && job?.isActive == true) {
+            return
+        }
+
+        currentTrackId = trackId
         currentTrack = config
         currentLevel = level
         
@@ -127,8 +145,12 @@ class DottoMusicEngine(private val library: MusicLibrary) {
         arpEnv.releaseTime = 0.1f
         
         // Interaction Envelope: Softer attack and longer release to be less harsh
-        interactionEnv.attackTime = 0.015f
+        interactionEnv.attackTime = 0.02f
         interactionEnv.releaseTime = 0.2f
+        
+        // Score Ping: Sharp and punchy
+        scorePingEnv.attackTime = 0.002f
+        scorePingEnv.releaseTime = 0.1f
 
         // Clear targets and buffers to prevent "garbage noise" on transition
         targetBassFreq = 0f
@@ -254,53 +276,74 @@ class DottoMusicEngine(private val library: MusicLibrary) {
             if (pendingTap) {
                 interactionBaseFreq = pendingTapFreq
                 interactionIsHuman = pendingIsHuman
+                interactionIsScore = pendingIsScore
                 
-                // Different character for Player vs Dotto
-                interactionOsc = SineWaveOscillator() // Use Sine for both to be less harsh
-                
-                if (interactionIsHuman) {
-                    interactionCurrentFreq = interactionBaseFreq * 0.9f // Subtler sweep
+                // Configure Character: Move vs Score
+                interactionOsc = interactionSine
+                if (interactionIsScore) {
+                    // Soothing Chime: Slow bloom, long tail, no pitch sweep
+                    interactionEnv.attackTime = 0.08f
+                    interactionEnv.releaseTime = 1.0f
+                    interactionCurrentFreq = interactionBaseFreq
                 } else {
-                    interactionCurrentFreq = interactionBaseFreq * 1.1f // Subtler sweep
+                    // Responsive Tap: Fast attack, shorter tail, subtle sweep
+                    interactionEnv.attackTime = 0.015f
+                    interactionEnv.releaseTime = 0.2f
+                    if (interactionIsHuman) {
+                        interactionCurrentFreq = interactionBaseFreq * 0.9f
+                    } else {
+                        interactionCurrentFreq = interactionBaseFreq * 1.1f
+                    }
                 }
                 
                 interactionSampleIdx = 0
                 interactionEnv.gate(on = true, retrigger = false)
                 pendingTap = false
             }
+            
+            if (pendingScorePing) {
+                scorePingEnv.gate(on = true, retrigger = true)
+                pendingScorePing = false
+            }
         }
         
         // Auto-gate off interaction after a short duration
-        if (sampleCount % samplesPerArp == (samplesPerArp / 2).toLong()) {
+        val gateOffTime = if (interactionIsScore) (samplesPerArp * 0.8f).toLong() else (samplesPerArp / 2).toLong()
+        if (sampleCount % samplesPerArp == gateOffTime) {
             interactionEnv.gate(on = false)
+            scorePingEnv.gate(on = false)
         }
 
-        // Pitch Sweep Logic: Cyberpunk Character (Softer)
-        if (interactionEnv.isActive()) {
+        // Pitch Sweep Logic: Only for moves, not for soothing scores
+        if (interactionEnv.isActive() && !interactionIsScore) {
             val sweepDurationSamples = (sampleRate * 0.1f).toInt() // 100ms sweep
             if (interactionSampleIdx < sweepDurationSamples) {
                 val progress = interactionSampleIdx.toFloat() / sweepDurationSamples
                 if (interactionIsHuman) {
-                    // Ascending Power-up for Player
                     interactionCurrentFreq = interactionBaseFreq * (0.9f + 0.1f * progress)
                 } else {
-                    // Descending Power-down for Dotto
                     interactionCurrentFreq = interactionBaseFreq * (1.1f - 0.1f * progress)
                 }
             } else {
                 interactionCurrentFreq = interactionBaseFreq
             }
+        }
+        
+        if (!interactionIsScore) {
             interactionSampleIdx++
         }
 
         val tap = interactionOsc.nextSample(interactionCurrentFreq, sampleRate) * 
                   interactionEnv.nextLevel(sampleRate)
+                  
+        val sPing = scorePingOsc.nextSample(interactionBaseFreq * 2f, sampleRate) * 
+                    scorePingEnv.nextLevel(sampleRate)
 
         sampleCount++
 
         // Mixer: Keep Bass separate from Effects to prevent "noise mud"
-        // Lowered tap volume significantly to 0.15f
-        val melodicSum = (pad + arp + tap * 0.15f) * 0.2f
+        // Lowered interaction volumes and feedback for a more subtle feel
+        val melodicSum = (pad + arp + tap * 0.08f + sPing * 0.12f) * 0.15f
         
         // Effects: Spacious atmosphere (Delay) - ONLY for pads and arps
         val delayReadIdx = (delayWriteIdx + 1) % delayBuffer.size
@@ -378,9 +421,13 @@ class DottoMusicEngine(private val library: MusicLibrary) {
     }
 
     /** Triggers a high-pitched ping aligned with the music rhythm */
-    fun triggerTap(frequency: Float, isHuman: Boolean = true) {
+    fun triggerTap(frequency: Float, isHuman: Boolean = true, isScore: Boolean = false) {
         pendingTapFreq = frequency
         pendingIsHuman = isHuman
+        pendingIsScore = isScore
         pendingTap = true
+        if (isScore) {
+            pendingScorePing = true
+        }
     }
 }

@@ -181,7 +181,7 @@ fun SetupScreen(
                 ) {
                     StarField(
                         modifier = Modifier.matchParentSize().alpha(0.7f),
-                        starCount = 180 
+                        starCount = 280
                     )
 
                     Surface(
