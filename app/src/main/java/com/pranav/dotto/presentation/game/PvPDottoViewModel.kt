@@ -7,12 +7,9 @@ import com.pranav.dotto.application.state.DottoUiState
 import com.pranav.dotto.application.state.SetupConfig
 import com.pranav.dotto.application.transport.MoveTransport
 import com.pranav.dotto.application.usecase.MakeMoveUseCase
-import com.pranav.dotto.domain.board.BoardGeometry
 import com.pranav.dotto.domain.engine.GameEngine
 import com.pranav.dotto.domain.engine.GameEngineImpl
-import com.pranav.dotto.domain.events.GameEvent
 import com.pranav.dotto.domain.model.*
-import com.pranav.dotto.infrastructure.persistence.PlayerProgressEntity
 import com.pranav.dotto.infrastructure.persistence.ProgressDao
 import com.pranav.dotto.infrastructure.persistence.SavedMoveEntity
 import com.pranav.dotto.presentation.sound.SoundManager
@@ -32,10 +29,14 @@ class PvPDottoViewModel(
 
     val connectionState: StateFlow<MoveTransport.ConnectionState> = transport.connectionState
 
+    private val _isLevelReceived = MutableStateFlow(false)
+    val isLevelReceived: StateFlow<Boolean> = _isLevelReceived.asStateFlow()
+
     private var localConfig: SetupConfig = SetupConfig()
     private var isHostDevice: Boolean = true
     private var localPlayerId = PlayerId("local_player")
     private var remotePlayerId = PlayerId("remote_player")
+    private var remotePlayerName: String = "Opponent"
 
     init {
         transport.onLevelReceived { remoteLevel ->
@@ -44,27 +45,55 @@ class PvPDottoViewModel(
                 levelNumber = remoteLevel,
                 gridDots = remoteLevel + 2
             )
-            // Opponent updates state with the challenger's selected level
+            _isLevelReceived.value = true
             _uiState.update { current ->
-                if (current is DottoUiState.PvPSetup) {
-                    current.copy(config = localConfig)
-                } else current
+                if (current is DottoUiState.PvPSetup) current.copy(config = localConfig) else current
             }
         }
 
-        transport.onMoveReceived { lineIndex ->
-            Log.d(TAG, "Received remote move index: $lineIndex")
-            val playing = _uiState.value as? DottoUiState.PvPPlaying ?: return@onMoveReceived
-            val line = BoardGeometry.indexToLine(playing.gameState.board.config, lineIndex)
-            applyMove(GameMove(remotePlayerId, line), isRemoteMove = true)
+        transport.onStartGameReceived {
+            Log.d(TAG, "Start game signal received")
+            startPvPGame()
+        }
+
+        transport.onRestartGameReceived {
+            Log.d(TAG, "Restart game signal received")
+            startPvPGame()
+        }
+
+        transport.onQuitGameReceived {
+            Log.d(TAG, "Quit game signal received")
+            restart()
+        }
+
+        transport.onMoveReceived { type, row, col ->
+            Log.d(TAG, "Received remote move: type=$type, r=$row, c=$col")
+            val line = if (type == 1) Line.Horizontal(row, col) else Line.Vertical(row, col)
+            applyMove(GameMove(remotePlayerId, line))
+        }
+
+        viewModelScope.launch {
+            transport.connectionState.collect { state ->
+                if (state is MoveTransport.ConnectionState.Connected) {
+                    remotePlayerName = state.remoteName
+                    if (isHostDevice) {
+                        transport.sendLevel(localConfig.levelNumber)
+                    }
+                }
+            }
         }
     }
 
     fun initSetup(config: SetupConfig, isHost: Boolean) {
+        val currentState = _uiState.value
+        if (currentState is DottoUiState.PvPPlaying || currentState is DottoUiState.Result) return
+        
+        val connState = transport.connectionState.value
+        if (connState is MoveTransport.ConnectionState.Connected || connState is MoveTransport.ConnectionState.Connecting) return
+
         this.localConfig = config
-        // Keep it in Setup, but we won't automatically start transport advertising/discovery here.
-        // We let the user choose dynamically on the screen.
-        _uiState.value = DottoUiState.PvPSetup(config = localConfig, isHost = isHost)
+        _isLevelReceived.value = isHost
+        _uiState.update { DottoUiState.PvPSetup(config = localConfig, isHost = isHost) }
     }
 
     fun startAdvertising() {
@@ -72,9 +101,7 @@ class PvPDottoViewModel(
         this.isHostDevice = true
         this.localPlayerId = PlayerId("host_player")
         this.remotePlayerId = PlayerId("joiner_player")
-        _uiState.update { current ->
-            if (current is DottoUiState.PvPSetup) current.copy(isHost = true) else current
-        }
+        _uiState.update { current -> if (current is DottoUiState.PvPSetup) current.copy(isHost = true) else current }
         transport.startAdvertising(localConfig.humanName.ifBlank { "Host" })
     }
 
@@ -83,36 +110,39 @@ class PvPDottoViewModel(
         this.isHostDevice = false
         this.localPlayerId = PlayerId("joiner_player")
         this.remotePlayerId = PlayerId("host_player")
-        _uiState.update { current ->
-            if (current is DottoUiState.PvPSetup) current.copy(isHost = false) else current
-        }
+        _uiState.update { current -> if (current is DottoUiState.PvPSetup) current.copy(isHost = false) else current }
         transport.startDiscovery()
     }
 
+    fun onEndpointSelected(endpointId: String) {
+        transport.connectTo(endpointId)
+    }
+
     fun onEnterGame() {
-        if (isHostDevice) {
-            transport.sendLevel(localConfig.levelNumber)
-        }
+        transport.sendStartGame()
         startPvPGame()
     }
 
     private fun startPvPGame() {
+        val hostName = if (isHostDevice) localConfig.humanName else remotePlayerName
+        val joinerName = if (!isHostDevice) localConfig.humanName else remotePlayerName
+
         val player1 = Player(
-            id = if (isHostDevice) localPlayerId else remotePlayerId,
-            name = if (isHostDevice) localConfig.humanName.ifBlank { "Player 1" } else "Opponent",
-            initial = if (isHostDevice) localConfig.humanName.trim().take(1).ifBlank { "P" }.uppercase() else "O",
+            id = PlayerId("host_player"),
+            name = hostName.ifBlank { "Host" },
+            initial = hostName.trim().take(1).ifBlank { "H" }.uppercase(),
             type = if (isHostDevice) PlayerType.HUMAN else PlayerType.REMOTE,
             colorToken = PlayerColorToken.PRIMARY
         )
         val player2 = Player(
-            id = if (isHostDevice) remotePlayerId else localPlayerId,
-            name = if (isHostDevice) "Opponent" else localConfig.humanName.ifBlank { "Player 2" },
-            initial = if (isHostDevice) "O" else localConfig.humanName.trim().take(1).ifBlank { "P" }.uppercase(),
-            type = if (isHostDevice) PlayerType.REMOTE else PlayerType.HUMAN,
+            id = PlayerId("joiner_player"),
+            name = joinerName.ifBlank { "Joiner" },
+            initial = joinerName.trim().take(1).ifBlank { "J" }.uppercase(),
+            type = if (!isHostDevice) PlayerType.HUMAN else PlayerType.REMOTE,
             colorToken = PlayerColorToken.SECONDARY
         )
 
-        val players = if (isHostDevice) listOf(player1, player2) else listOf(player1, player2)
+        val players = listOf(player1, player2)
         val initialGameState = engine.startGame(localConfig.boardConfig, players)
 
         _uiState.value = DottoUiState.PvPPlaying(
@@ -127,40 +157,32 @@ class PvPDottoViewModel(
         if (state.currentPlayerId != localPlayerId) return
         if (!engine.validateMove(state, line)) return
 
-        val lineIndex = BoardGeometry.lineToIndex(state.board.config, line)
-        transport.sendMove(lineIndex)
-        applyMove(GameMove(localPlayerId, line), isRemoteMove = false)
+        val type = if (line is Line.Horizontal) 1 else 2
+        val row = when (line) { is Line.Horizontal -> line.row; is Line.Vertical -> line.row }
+        val col = when (line) { is Line.Horizontal -> line.column; is Line.Vertical -> line.column }
+        
+        transport.sendMove(type, row, col)
+        applyMove(GameMove(localPlayerId, line))
     }
 
-    private fun applyMove(move: GameMove, isRemoteMove: Boolean) {
+    private fun applyMove(move: GameMove) {
         val playing = _uiState.value as? DottoUiState.PvPPlaying ?: return
         val result = makeMove(playing.gameState, move)
 
-        if (!result.accepted) {
-            Log.w(TAG, "Rejected move from ${move.playerId}: ${move.line}")
-            return
-        }
+        if (!result.accepted) return
 
-        // Save move locally in database
         viewModelScope.launch {
             progressDao?.insertMove(
                 SavedMoveEntity(
                     levelNumber = localConfig.levelNumber,
                     playerId = move.playerId.value,
                     lineType = if (move.line is Line.Horizontal) "Horizontal" else "Vertical",
-                    row = when (val l = move.line) {
-                        is Line.Horizontal -> l.row
-                        is Line.Vertical -> l.row
-                    },
-                    column = when (val l = move.line) {
-                        is Line.Horizontal -> l.column
-                        is Line.Vertical -> l.column
-                    }
+                    row = when (val l = move.line) { is Line.Horizontal -> l.row; is Line.Vertical -> l.row },
+                    column = when (val l = move.line) { is Line.Horizontal -> l.column; is Line.Vertical -> l.column }
                 )
             )
         }
 
-        // Play sounds
         val isLocalHuman = move.playerId == localPlayerId
         if (result.completedBoxes.isNotEmpty()) {
             soundManager?.playScore(isLocalHuman, localConfig.soundEnabled, localConfig.hapticEnabled)
@@ -184,11 +206,13 @@ class PvPDottoViewModel(
     }
 
     fun restart() {
+        transport.sendQuitGame()
         transport.disconnect()
         _uiState.value = DottoUiState.Setup(config = localConfig)
     }
 
     fun playAgainSameConfig() {
+        transport.sendRestartGame()
         startPvPGame()
     }
 

@@ -426,7 +426,9 @@ fun SetupScreen(
                                 Text("INTELLECT", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
                                 ) {
                                     AiDifficulty.entries.forEach { difficulty ->
                                         FilterChip(

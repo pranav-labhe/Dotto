@@ -34,10 +34,12 @@ fun PvPSetup(
     config: SetupConfig,
     isHost: Boolean,
     connectionState: MoveTransport.ConnectionState,
+    isLevelReceived: Boolean,
     onEnterGame: () -> Unit,
     onBack: () -> Unit,
     onStartHost: () -> Unit,
     onStartDiscovery: () -> Unit,
+    onEndpointSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -186,6 +188,7 @@ fun PvPSetup(
                         val statusText = when (connectionState) {
                             is MoveTransport.ConnectionState.Advertising -> "Waiting for Opponent to join..."
                             is MoveTransport.ConnectionState.Discovering -> "Searching for Challenger..."
+                            is MoveTransport.ConnectionState.DiscoveryFound -> "Challengers found in orbit:"
                             is MoveTransport.ConnectionState.Connecting -> "Connecting to Opponent..."
                             is MoveTransport.ConnectionState.Connected -> "Opponent Connected: ${connectionState.remoteName}"
                             is MoveTransport.ConnectionState.Error -> "Connection issue: ${connectionState.message}"
@@ -199,6 +202,23 @@ fun PvPSetup(
                             fontWeight = FontWeight.SemiBold
                         )
 
+                        if (connectionState is MoveTransport.ConnectionState.DiscoveryFound) {
+                            connectionState.endpoints.forEach { endpoint ->
+                                OutlinedButton(
+                                    onClick = { onEndpointSelected(endpoint.id) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = DottoPrimary),
+                                    border = BorderStroke(1.dp, DottoPrimary.copy(alpha = 0.5f))
+                                ) {
+                                    Text("JOIN ${endpoint.name.uppercase()}", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            if (connectionState.endpoints.isEmpty()) {
+                                Text("No signals detected yet...", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            }
+                        }
+
                         Text(
                             text = "Grid Size: Level ${config.levelNumber} (${config.gridDots}x${config.gridDots})",
                             style = MaterialTheme.typography.bodyMedium,
@@ -211,9 +231,10 @@ fun PvPSetup(
             // Action / Enter button (Visible only after choice is made)
             if (connectionState !is MoveTransport.ConnectionState.Idle) {
                 val isConnected = connectionState is MoveTransport.ConnectionState.Connected
+                val canEnter = isConnected && (isHost || isLevelReceived)
                 Button(
                     onClick = onEnterGame,
-                    enabled = isConnected,
+                    enabled = canEnter,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(68.dp),
@@ -224,10 +245,15 @@ fun PvPSetup(
                     )
                 ) {
                     Text(
-                        text = if (isConnected) "ENTER THE GRID" else "CONNECTING...",
+                        text = when {
+                            isConnected && !canEnter -> "WAITING FOR LEVEL..."
+                            isConnected && !isHost -> "WAITING FOR CHALLENGER TO START..."
+                            isConnected -> "ENTER THE GRID"
+                            else -> "CONNECTING..."
+                        },
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 2.sp,
-                        color = if (isConnected) DottoBackground else Color.White.copy(alpha = 0.5f)
+                        color = if (canEnter) DottoBackground else Color.White.copy(alpha = 0.5f)
                     )
                 }
             } else {

@@ -72,6 +72,7 @@ fun DottoApp(
     val state by viewModel.uiState.collectAsState()
     val pvpState by pvpViewModel.uiState.collectAsState()
     val pvpConnectionState by pvpViewModel.connectionState.collectAsState()
+    val isLevelReceived by pvpViewModel.isLevelReceived.collectAsState()
     val soundEnabled by viewModel.soundEnabled.collectAsState()
 
     // Handle procedural music transitions based on App state
@@ -116,12 +117,13 @@ fun DottoApp(
                         soundManager = soundManager
                     )
                     is DottoUiState.PvPSetup -> {
-                        LaunchedEffect(currentState) {
+                        LaunchedEffect(Unit) {
                             pvpViewModel.initSetup(currentState.config, currentState.isHost)
                         }
-                        when (val currentPvpState = pvpState) {
+                        val currentPvpState = pvpState as? DottoUiState.PvPSetup
+                        when (pvpState) {
                             is DottoUiState.PvPPlaying -> PvPGameScreen(
-                                state = currentPvpState,
+                                state = pvpState as DottoUiState.PvPPlaying,
                                 onLineTapped = pvpViewModel::onLineSelected,
                                 onNewGame = {
                                     pvpViewModel.restart()
@@ -130,7 +132,7 @@ fun DottoApp(
                                 onRestart = pvpViewModel::playAgainSameConfig
                             )
                             is DottoUiState.Result -> ResultScreen(
-                                gameState = currentPvpState.gameState,
+                                gameState = (pvpState as DottoUiState.Result).gameState,
                                 onPlayAgain = pvpViewModel::playAgainSameConfig,
                                 onNewSetup = {
                                     pvpViewModel.restart()
@@ -139,16 +141,18 @@ fun DottoApp(
                                 onNextLevel = viewModel::startNextLevel
                             )
                             else -> PvPSetup(
-                                config = currentState.config,
-                                isHost = currentState.isHost,
+                                config = currentPvpState?.config ?: currentState.config,
+                                isHost = currentPvpState?.isHost ?: currentState.isHost,
                                 connectionState = pvpConnectionState,
+                                isLevelReceived = isLevelReceived,
                                 onEnterGame = pvpViewModel::onEnterGame,
                                 onBack = {
                                     pvpViewModel.restart()
                                     viewModel.restart()
                                 },
                                 onStartHost = pvpViewModel::startAdvertising,
-                                onStartDiscovery = pvpViewModel::startDiscovery
+                                onStartDiscovery = pvpViewModel::startDiscovery,
+                                onEndpointSelected = pvpViewModel::onEndpointSelected
                             )
                         }
                     }
