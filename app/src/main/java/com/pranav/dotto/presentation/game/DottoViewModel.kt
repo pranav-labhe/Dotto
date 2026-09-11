@@ -78,7 +78,7 @@ class DottoViewModel(
                 lastSetupConfig = lastSetupConfig.copy(
                     humanName = progress.playerName,
                     levelNumber = progress.currentLevel,
-                    gridDots = (progress.currentLevel + 2).coerceIn(3, 1005)
+                    gridDots = (progress.currentLevel + 2).coerceIn(3, 10)
                 )
                 currentTotalScore = progress.totalScore
                 highestLevelReached = progress.highestLevelReached
