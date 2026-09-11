@@ -62,17 +62,31 @@ class PvPDottoViewModel(
 
     fun initSetup(config: SetupConfig, isHost: Boolean) {
         this.localConfig = config
-        this.isHostDevice = isHost
-        this.localPlayerId = if (isHost) PlayerId("host_player") else PlayerId("joiner_player")
-        this.remotePlayerId = if (isHost) PlayerId("joiner_player") else PlayerId("host_player")
-
+        // Keep it in Setup, but we won't automatically start transport advertising/discovery here.
+        // We let the user choose dynamically on the screen.
         _uiState.value = DottoUiState.PvPSetup(config = localConfig, isHost = isHost)
-        
-        if (isHost) {
-            transport.startAdvertising(localConfig.humanName.ifBlank { "Host" })
-        } else {
-            transport.startDiscovery()
+    }
+
+    fun startAdvertising() {
+        transport.disconnect()
+        this.isHostDevice = true
+        this.localPlayerId = PlayerId("host_player")
+        this.remotePlayerId = PlayerId("joiner_player")
+        _uiState.update { current ->
+            if (current is DottoUiState.PvPSetup) current.copy(isHost = true) else current
         }
+        transport.startAdvertising(localConfig.humanName.ifBlank { "Host" })
+    }
+
+    fun startDiscovery() {
+        transport.disconnect()
+        this.isHostDevice = false
+        this.localPlayerId = PlayerId("joiner_player")
+        this.remotePlayerId = PlayerId("host_player")
+        _uiState.update { current ->
+            if (current is DottoUiState.PvPSetup) current.copy(isHost = false) else current
+        }
+        transport.startDiscovery()
     }
 
     fun onEnterGame() {

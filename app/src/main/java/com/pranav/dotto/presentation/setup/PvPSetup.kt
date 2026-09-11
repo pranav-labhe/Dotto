@@ -36,6 +36,8 @@ fun PvPSetup(
     connectionState: MoveTransport.ConnectionState,
     onEnterGame: () -> Unit,
     onBack: () -> Unit,
+    onStartHost: () -> Unit,
+    onStartDiscovery: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -102,93 +104,134 @@ fun PvPSetup(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isHost) "CHALLENGER (HOST)" else "JOIN OPPONENT",
+                    text = when (connectionState) {
+                        is MoveTransport.ConnectionState.Idle -> "CHOOSE YOUR ROLE"
+                        else -> if (isHost) "CHALLENGER (HOST)" else "JOIN OPPONENT"
+                    },
                     style = MaterialTheme.typography.titleLarge,
                     color = DottoPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // Connection Status Box
+            // Connection Status / Choice Box
             Surface(
                 color = DottoSurface.copy(alpha = 0.4f),
                 shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(1.dp, DottoPrimary.copy(alpha = 0.3f)),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    val icon = when (connectionState) {
-                        is MoveTransport.ConnectionState.Connected -> Icons.Default.WifiTethering
-                        is MoveTransport.ConnectionState.Error -> Icons.Default.SensorsOff
-                        else -> Icons.Default.Sensors
+                if (connectionState is MoveTransport.ConnectionState.Idle) {
+                    // Show choices to choose Role
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            "Select whether you want to Host or Join the game:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Button(
+                            onClick = onStartHost,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = DottoPrimary)
+                        ) {
+                            Text("HOST GAME (CHALLENGER)", fontWeight = FontWeight.Bold, color = DottoBackground)
+                        }
+
+                        Button(
+                            onClick = onStartDiscovery,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = DottoSecondary)
+                        ) {
+                            Text("JOIN GAME (OPPONENT)", fontWeight = FontWeight.Bold, color = DottoBackground)
+                        }
                     }
-                    val iconColor = when (connectionState) {
-                        is MoveTransport.ConnectionState.Connected -> DottoSecondary
-                        is MoveTransport.ConnectionState.Error -> DottoTertiary
-                        else -> DottoPrimary
+                } else {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        val icon = when (connectionState) {
+                            is MoveTransport.ConnectionState.Connected -> Icons.Default.WifiTethering
+                            is MoveTransport.ConnectionState.Error -> Icons.Default.SensorsOff
+                            else -> Icons.Default.Sensors
+                        }
+                        val iconColor = when (connectionState) {
+                            is MoveTransport.ConnectionState.Connected -> DottoSecondary
+                            is MoveTransport.ConnectionState.Error -> DottoTertiary
+                            else -> DottoPrimary
+                        }
+
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconColor,
+                            modifier = Modifier
+                                .size(72.dp)
+                                .then(
+                                    if (connectionState !is MoveTransport.ConnectionState.Connected)
+                                        Modifier.scale(pulseScale)
+                                    else Modifier
+                                )
+                        )
+
+                        val statusText = when (connectionState) {
+                            is MoveTransport.ConnectionState.Advertising -> "Waiting for Opponent to join..."
+                            is MoveTransport.ConnectionState.Discovering -> "Searching for Challenger..."
+                            is MoveTransport.ConnectionState.Connecting -> "Connecting to Opponent..."
+                            is MoveTransport.ConnectionState.Connected -> "Opponent Connected: ${connectionState.remoteName}"
+                            is MoveTransport.ConnectionState.Error -> "Connection issue: ${connectionState.message}"
+                            else -> "Initializing Nearby..."
+                        }
+
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Text(
+                            text = "Grid Size: Level ${config.levelNumber} (${config.gridDots}x${config.gridDots})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
                     }
-
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = iconColor,
-                        modifier = Modifier
-                            .size(72.dp)
-                            .then(
-                                if (connectionState !is MoveTransport.ConnectionState.Connected)
-                                    Modifier.scale(pulseScale)
-                                else Modifier
-                            )
-                    )
-
-                    val statusText = when (connectionState) {
-                        is MoveTransport.ConnectionState.Idle -> "Initializing Nearby..."
-                        is MoveTransport.ConnectionState.Advertising -> "Waiting for Opponent to join..."
-                        is MoveTransport.ConnectionState.Discovering -> "Searching for Challenger..."
-                        is MoveTransport.ConnectionState.Connecting -> "Connecting to Opponent..."
-                        is MoveTransport.ConnectionState.Connected -> "Opponent Connected: ${connectionState.remoteName}"
-                        is MoveTransport.ConnectionState.Error -> "Connection issue: ${connectionState.message}"
-                    }
-
-                    Text(
-                        text = statusText,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Text(
-                        text = "Grid Size: Level ${config.levelNumber} (${config.gridDots}x${config.gridDots})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
                 }
             }
 
-            // Action / Enter button
-            val isConnected = connectionState is MoveTransport.ConnectionState.Connected
-            Button(
-                onClick = onEnterGame,
-                enabled = isConnected,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(68.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DottoPrimary,
-                    disabledContainerColor = DottoPrimary.copy(alpha = 0.2f)
-                )
-            ) {
-                Text(
-                    text = if (isConnected) "ENTER THE GRID" else "CONNECTING...",
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 2.sp,
-                    color = if (isConnected) DottoBackground else Color.White.copy(alpha = 0.5f)
-                )
+            // Action / Enter button (Visible only after choice is made)
+            if (connectionState !is MoveTransport.ConnectionState.Idle) {
+                val isConnected = connectionState is MoveTransport.ConnectionState.Connected
+                Button(
+                    onClick = onEnterGame,
+                    enabled = isConnected,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(68.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DottoPrimary,
+                        disabledContainerColor = DottoPrimary.copy(alpha = 0.2f)
+                    )
+                ) {
+                    Text(
+                        text = if (isConnected) "ENTER THE GRID" else "CONNECTING...",
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 2.sp,
+                        color = if (isConnected) DottoBackground else Color.White.copy(alpha = 0.5f)
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(68.dp))
             }
         }
     }

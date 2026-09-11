@@ -146,7 +146,9 @@ fun DottoApp(
                                 onBack = {
                                     pvpViewModel.restart()
                                     viewModel.restart()
-                                }
+                                },
+                                onStartHost = pvpViewModel::startAdvertising,
+                                onStartDiscovery = pvpViewModel::startDiscovery
                             )
                         }
                     }
