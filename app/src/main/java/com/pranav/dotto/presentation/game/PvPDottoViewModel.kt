@@ -227,9 +227,6 @@ class PvPDottoViewModel(
     }
 
     fun playAgainSameConfig() {
-        viewModelScope.launch {
-            progressDao?.clearAllMoves()
-        }
         transport.sendRestartGame()
         startPvPGame()
     }
