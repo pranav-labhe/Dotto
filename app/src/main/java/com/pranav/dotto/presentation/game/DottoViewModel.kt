@@ -237,6 +237,7 @@ class DottoViewModel(
     override fun onCleared() {
         super.onCleared()
         cancelAiWork()
+        soundManager?.release()
     }
 
     private fun cancelAiWork() {
@@ -255,7 +256,9 @@ class DottoViewModel(
     private fun maybeTriggerAiTurn(state: GameState) {
         if (state.status is GameStatus.Finished) {
             _uiState.value = DottoUiState.Result(state)
-            soundManager?.playWin(lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
+            val outcome = (state.status as? GameStatus.Finished)?.outcome
+            val isHumanWinner = (outcome as? GameOutcome.Win)?.winnerId?.value == "human_player"
+            soundManager?.playWin(isHumanWinner, lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
             return
         }
         val current = state.currentPlayer ?: return
@@ -313,10 +316,12 @@ class DottoViewModel(
 
         // Play sounds based on move result
         if (result.accepted) {
+            val player = result.newState.players.firstOrNull { it.id == move.playerId }
+            val isHuman = player?.type == PlayerType.HUMAN
             if (result.completedBoxes.isNotEmpty()) {
-                soundManager?.playScore(lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
+                soundManager?.playScore(isHuman, lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
             } else {
-                soundManager?.playMove(lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
+                soundManager?.playMove(isHuman, lastSetupConfig.soundEnabled, lastSetupConfig.hapticEnabled)
             }
         }
 

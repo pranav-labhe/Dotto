@@ -25,10 +25,28 @@ class TriangleWaveOscillator : Oscillator {
     private var phase = 0f
 
     override fun nextSample(frequency: Float, sampleRate: Int): Float {
-        val t = phase / (2f * PI.toFloat())
-        val sample = (2f * Math.abs(2f * (t - Math.floor(t.toDouble() + 0.5).toFloat())) - 1f).toFloat()
+        // Ensure phase is wrapped BEFORE calculation to prevent out-of-bounds jumps
+        while (phase >= 2f * PI.toFloat()) phase -= 2f * PI.toFloat()
+        while (phase < 0f) phase += 2f * PI.toFloat()
+        
+        val x = phase / PI.toFloat() // Range 0..2
+        val sample = 1f - 2f * Math.abs(1f - x)
+        
         phase += 2f * PI.toFloat() * frequency / sampleRate
-        while (phase > 2f * PI.toFloat()) phase -= 2f * PI.toFloat()
+        return sample
+    }
+}
+
+class SquareWaveOscillator : Oscillator {
+    private var phase = 0f
+
+    override fun nextSample(frequency: Float, sampleRate: Int): Float {
+        while (phase >= 2f * PI.toFloat()) phase -= 2f * PI.toFloat()
+        while (phase < 0f) phase += 2f * PI.toFloat()
+
+        val sample = if (phase < PI.toFloat()) 1f else -1f
+        
+        phase += 2f * PI.toFloat() * frequency / sampleRate
         return sample
     }
 }
@@ -44,8 +62,17 @@ class AdsrEnvelope {
 
     enum class State { IDLE, ATTACK, SUSTAIN, RELEASE }
 
-    fun gate(on: Boolean) {
-        state = if (on) State.ATTACK else State.RELEASE
+    /**
+     * @param on Whether the gate is on or off
+     * @param retrigger If true, resets the level to 0 immediately when gate is turned on.
+     */
+    fun gate(on: Boolean, retrigger: Boolean = false) {
+        if (on) {
+            if (retrigger) currentLevel = 0f
+            state = State.ATTACK
+        } else {
+            state = State.RELEASE
+        }
     }
 
     fun nextLevel(sampleRate: Int): Float {

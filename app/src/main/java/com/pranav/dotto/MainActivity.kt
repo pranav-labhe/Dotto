@@ -34,6 +34,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Resume music if sound was enabled
+        soundManager.resumeMusic(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Pause music when backgrounded
+        soundManager.stopMusic()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         soundManager.release()

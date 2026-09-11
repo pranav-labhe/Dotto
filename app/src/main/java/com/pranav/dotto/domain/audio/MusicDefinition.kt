@@ -30,7 +30,8 @@ data class PadConfig(
     val waveform: String,
     val attack: Float,
     val release: Float,
-    val volume: Float
+    val volume: Float,
+    val wobble: Float = 0f // New: Pitch modulation amount (0.0 to 1.0)
 )
 
 data class ArpConfig(
