@@ -6,5 +6,6 @@ package com.pranav.dotto.domain.model
  */
 enum class PlayerType {
     HUMAN,
-    AI
+    AI,
+    REMOTE
 }

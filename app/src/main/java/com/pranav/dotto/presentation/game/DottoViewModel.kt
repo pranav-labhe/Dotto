@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.pranav.dotto.domain.ai.AiDifficulty
 
 /**
  * Orchestrates the Setup -> Playing -> Result flow. Owns the current
@@ -129,6 +130,11 @@ class DottoViewModel(
         val config = (_uiState.value as? DottoUiState.Setup)?.config ?: lastSetupConfig
         lastSetupConfig = config
         saveProgress()
+
+        if (config.aiDifficulty == AiDifficulty.LIVE_OPPONENT) {
+            _uiState.value = DottoUiState.PvPSetup(config = config, isHost = true)
+            return
+        }
 
         // Cancel any stale AI work from a previous game before wiring up the new one.
         cancelAiWork()

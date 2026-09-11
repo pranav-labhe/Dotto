@@ -1,5 +1,6 @@
 package com.pranav.dotto.application.state
 
+import com.pranav.dotto.domain.model.BoxCoordinate
 import com.pranav.dotto.domain.model.GameState
 import com.pranav.dotto.domain.model.Line
 
@@ -16,9 +17,21 @@ sealed interface DottoUiState {
         val highestLevel: Int = 1
     ) : DottoUiState
 
+    data class PvPSetup(
+        val config: SetupConfig,
+        val isHost: Boolean
+    ) : DottoUiState
+
     data class Playing(
         val gameState: GameState,
         val isAiThinking: Boolean = false,
+        val lastMoveLine: Line? = null,
+        val recentlyCompletedBoxes: Set<BoxCoordinate> = emptySet()
+    ) : DottoUiState
+
+    data class PvPPlaying(
+        val gameState: GameState,
+        val isRemoteTurn: Boolean = false,
         val lastMoveLine: Line? = null,
         val recentlyCompletedBoxes: Set<com.pranav.dotto.domain.model.BoxCoordinate> = emptySet()
     ) : DottoUiState

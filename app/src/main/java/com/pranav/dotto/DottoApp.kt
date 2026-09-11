@@ -14,25 +14,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pranav.dotto.application.state.DottoUiState
 import com.pranav.dotto.domain.model.GameOutcome
 import com.pranav.dotto.domain.model.GameStatus
 import com.pranav.dotto.domain.model.PlayerType
 import com.pranav.dotto.infrastructure.persistence.DottoDatabase
+import com.pranav.dotto.infrastructure.transport.NearbyTransport
 import com.pranav.dotto.presentation.game.DottoViewModel
 import com.pranav.dotto.presentation.game.GameScreen
+import com.pranav.dotto.presentation.game.PvPDottoViewModel
+import com.pranav.dotto.presentation.game.PvPGameScreen
 import com.pranav.dotto.presentation.result.ResultScreen
+import com.pranav.dotto.presentation.setup.PvPSetup
 import com.pranav.dotto.presentation.setup.SetupScreen
 import com.pranav.dotto.presentation.sound.SoundManager
 import com.pranav.dotto.presentation.theme.DottoTheme
 
 /**
  * Root composable. Deliberately not using androidx.navigation — the whole
- * app is three linear screens driven by one sealed [DottoUiState], so a
- * simple `when` gives the same behavior with far less ceremony. A real
- * NavHost can be introduced later if screen count grows (e.g. history,
- * replay, settings) without touching the ViewModel contract.
+ * app is driven by [DottoUiState], so a simple `when` gives the same behavior
+ * with far less ceremony.
  */
 @Composable
 fun DottoApp(
@@ -52,7 +56,22 @@ fun DottoApp(
             }
         }
     )
+
+    val pvpViewModel: PvPDottoViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return PvPDottoViewModel(
+                    transport = NearbyTransport(context.applicationContext),
+                    soundManager = soundManager,
+                    progressDao = progressDao
+                ) as T
+            }
+        }
+    )
+
     val state by viewModel.uiState.collectAsState()
+    val pvpState by pvpViewModel.uiState.collectAsState()
+    val pvpConnectionState by pvpViewModel.connectionState.collectAsState()
     val soundEnabled by viewModel.soundEnabled.collectAsState()
 
     // Handle procedural music transitions based on App state
@@ -62,7 +81,9 @@ fun DottoApp(
         } else {
             when (val s = state) {
                 is DottoUiState.Setup -> soundManager?.startMusic("landing", s.highestLevel, true)
+                is DottoUiState.PvPSetup -> soundManager?.startMusic("landing", s.config.levelNumber, true)
                 is DottoUiState.Playing -> soundManager?.startMusic("game", s.gameState.board.config.dotRows, true)
+                is DottoUiState.PvPPlaying -> soundManager?.startMusic("game", s.gameState.board.config.dotRows, true)
                 is DottoUiState.Result -> {
                     val outcome = (s.gameState.status as? GameStatus.Finished)?.outcome
                     val humanPlayer = s.gameState.players.firstOrNull { it.type == PlayerType.HUMAN }
@@ -94,12 +115,58 @@ fun DottoApp(
                         highestLevel = currentState.highestLevel,
                         soundManager = soundManager
                     )
+                    is DottoUiState.PvPSetup -> {
+                        LaunchedEffect(currentState) {
+                            pvpViewModel.initSetup(currentState.config, currentState.isHost)
+                        }
+                        when (val currentPvpState = pvpState) {
+                            is DottoUiState.PvPPlaying -> PvPGameScreen(
+                                state = currentPvpState,
+                                onLineTapped = pvpViewModel::onLineSelected,
+                                onNewGame = {
+                                    pvpViewModel.restart()
+                                    viewModel.restart()
+                                },
+                                onRestart = pvpViewModel::playAgainSameConfig
+                            )
+                            is DottoUiState.Result -> ResultScreen(
+                                gameState = currentPvpState.gameState,
+                                onPlayAgain = pvpViewModel::playAgainSameConfig,
+                                onNewSetup = {
+                                    pvpViewModel.restart()
+                                    viewModel.restart()
+                                },
+                                onNextLevel = viewModel::startNextLevel
+                            )
+                            else -> PvPSetup(
+                                config = currentState.config,
+                                isHost = currentState.isHost,
+                                connectionState = pvpConnectionState,
+                                onEnterGame = pvpViewModel::onEnterGame,
+                                onBack = {
+                                    pvpViewModel.restart()
+                                    viewModel.restart()
+                                }
+                            )
+                        }
+                    }
                     is DottoUiState.Playing -> GameScreen(
                         state = currentState,
                         onLineTapped = viewModel::onLineSelected,
                         onNewGame = viewModel::restart,
                         onRestart = viewModel::playAgainSameConfig
                     )
+                    is DottoUiState.PvPPlaying -> {
+                        PvPGameScreen(
+                            state = currentState,
+                            onLineTapped = pvpViewModel::onLineSelected,
+                            onNewGame = {
+                                pvpViewModel.restart()
+                                viewModel.restart()
+                            },
+                            onRestart = pvpViewModel::playAgainSameConfig
+                        )
+                    }
                     is DottoUiState.Result -> ResultScreen(
                         gameState = currentState.gameState,
                         onPlayAgain = viewModel::playAgainSameConfig,

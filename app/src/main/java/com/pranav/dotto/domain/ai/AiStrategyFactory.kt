@@ -6,5 +6,6 @@ object AiStrategyFactory {
         AiDifficulty.EASY -> EasyAiStrategy()
         AiDifficulty.MEDIUM -> MediumAiStrategy()
         AiDifficulty.HARD -> HardAiStrategy()
+        AiDifficulty.LIVE_OPPONENT -> MediumAiStrategy()
     }
 }

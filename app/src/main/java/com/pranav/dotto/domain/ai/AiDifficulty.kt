@@ -8,5 +8,6 @@ package com.pranav.dotto.domain.ai
 enum class AiDifficulty {
     EASY,
     MEDIUM,
-    HARD
+    HARD,
+    LIVE_OPPONENT
 }

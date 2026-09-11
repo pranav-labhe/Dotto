@@ -78,4 +78,35 @@ object BoardGeometry {
     /** Number of the box's 4 sides already drawn (0..4). Used heavily by AI heuristics. */
     fun sidesDrawn(box: BoxCoordinate, drawnLines: Set<Line>): Int =
         linesForBox(box).count { it in drawnLines }
+
+    /**
+     * Converts a Line into a deterministic integer index for lightweight transport.
+     * Order matches [allLines].
+     */
+    fun lineToIndex(config: BoardConfig, line: Line): Int {
+        val totalH = config.dotRows * (config.dotColumns - 1)
+        return when (line) {
+            is Line.Horizontal -> line.row * (config.dotColumns - 1) + line.column
+            is Line.Vertical -> totalH + line.row * config.dotColumns + line.column
+        }
+    }
+
+    /**
+     * Converts a deterministic integer index back into a Line.
+     */
+    fun indexToLine(config: BoardConfig, index: Int): Line {
+        val hCols = config.dotColumns - 1
+        val totalH = config.dotRows * hCols
+        return if (index < totalH) {
+            val r = index / hCols
+            val c = index % hCols
+            Line.Horizontal(r, c)
+        } else {
+            val vIndex = index - totalH
+            val vCols = config.dotColumns
+            val r = vIndex / vCols
+            val c = vIndex % vCols
+            Line.Vertical(r, c)
+        }
+    }
 }

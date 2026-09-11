@@ -423,7 +423,7 @@ fun SetupScreen(
 
                             // Difficulty Section
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("AI INTELLECT", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
+                                Text("INTELLECT", style = MaterialTheme.typography.labelLarge, color = DottoPrimary)
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier = Modifier.fillMaxWidth()
@@ -435,10 +435,16 @@ fun SetupScreen(
                                                 soundManager?.playUISelect(config.soundEnabled)
                                                 onConfigChange(config.copy(aiDifficulty = difficulty)) 
                                             },
-                                            label = { Text(difficulty.name, fontSize = 12.sp) },
+                                            label = { 
+                                                Text(
+                                                    text = if (difficulty == AiDifficulty.LIVE_OPPONENT) "LIVE OPPONENT" else difficulty.name, 
+                                                    fontSize = 11.sp,
+                                                    fontWeight = if (difficulty == AiDifficulty.LIVE_OPPONENT) FontWeight.Bold else FontWeight.Normal
+                                                ) 
+                                            },
                                             shape = RoundedCornerShape(12.dp),
                                             colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = DottoPrimary,
+                                                selectedContainerColor = if (difficulty == AiDifficulty.LIVE_OPPONENT) DottoSecondary else DottoPrimary,
                                                 selectedLabelColor = DottoBackground,
                                                 labelColor = Color.White
                                             ),
@@ -446,7 +452,7 @@ fun SetupScreen(
                                                 enabled = true,
                                                 selected = config.aiDifficulty == difficulty,
                                                 borderColor = Color.White.copy(alpha = 0.2f),
-                                                selectedBorderColor = DottoPrimary
+                                                selectedBorderColor = if (difficulty == AiDifficulty.LIVE_OPPONENT) DottoSecondary else DottoPrimary
                                             )
                                         )
                                     }
