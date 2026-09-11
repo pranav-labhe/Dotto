@@ -34,7 +34,8 @@ class PvPDottoViewModel(
 
     private var localConfig: SetupConfig = SetupConfig()
     private var isHostDevice: Boolean = true
-    private var localPlayerId = PlayerId("local_player")
+    var localPlayerId = PlayerId("local_player")
+        private set
     private var remotePlayerId = PlayerId("remote_player")
     private var remotePlayerName: String = "Opponent"
 
@@ -64,6 +65,11 @@ class PvPDottoViewModel(
         transport.onQuitGameReceived {
             Log.d(TAG, "Quit game signal received")
             restart()
+        }
+
+        transport.onBackToRoomReceived {
+            Log.d(TAG, "Back to room signal received")
+            backToRoomLocal()
         }
 
         transport.onMoveReceived { type, row, col ->
@@ -115,7 +121,7 @@ class PvPDottoViewModel(
     }
 
     fun onEndpointSelected(endpointId: String) {
-        transport.connectTo(endpointId)
+        transport.connectTo(endpointId, localConfig.humanName.ifBlank { "Opponent" })
     }
 
     fun onEnterGame() {
@@ -209,6 +215,15 @@ class PvPDottoViewModel(
         transport.sendQuitGame()
         transport.disconnect()
         _uiState.value = DottoUiState.Setup(config = localConfig)
+    }
+
+    fun onBackToRoom() {
+        transport.sendBackToRoom()
+        backToRoomLocal()
+    }
+
+    private fun backToRoomLocal() {
+        _uiState.update { DottoUiState.PvPSetup(config = localConfig, isHost = isHostDevice) }
     }
 
     fun playAgainSameConfig() {

@@ -24,7 +24,8 @@ import com.pranav.dotto.presentation.theme.DottoSecondary
 fun TurnIndicator(
     text: String,
     isHumanTurn: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    overrideColor: Color? = null
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val alpha by infiniteTransition.animateFloat(
@@ -37,7 +38,7 @@ fun TurnIndicator(
         label = "alpha"
     )
 
-    val baseColor = if (isHumanTurn) DottoPrimary else DottoSecondary
+    val baseColor = overrideColor ?: if (isHumanTurn) DottoPrimary else DottoSecondary
 
     AnimatedContent(
         targetState = text,

@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import com.pranav.dotto.application.state.DottoUiState
 import com.pranav.dotto.domain.model.Line
 import com.pranav.dotto.presentation.components.DottoBoard
@@ -140,13 +142,16 @@ fun PvPGameScreen(
 
             ScorePanel(players = gameState.players, scores = gameState.scores, currentPlayerId = gameState.currentPlayerId, colorFor = PlayerPresentation::colorFor)
 
-            val turnLabel = when {
-                !state.isRemoteTurn -> "YOUR TURN"
-                else -> "${gameState.currentPlayer?.name ?: "Opponent"}'s turn"
-            }
+            val turnLabel = if (!state.isRemoteTurn) "YOUR TURN" else "${gameState.currentPlayer?.name?.uppercase() ?: "OPPONENT"}'S TURN"
             val isLocalTurn = !state.isRemoteTurn
+            val turnColor = gameState.currentPlayer?.let { PlayerPresentation.colorFor(it.colorToken) } ?: DottoPrimary
+
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = if (isLocalTurn) Alignment.CenterStart else Alignment.CenterEnd) {
-                TurnIndicator(text = turnLabel, isHumanTurn = isLocalTurn)
+                TurnIndicator(
+                    text = turnLabel,
+                    isHumanTurn = isLocalTurn,
+                    overrideColor = turnColor
+                )
             }
 
             // Consolidated Board and Deep Space Buffer
@@ -172,7 +177,14 @@ fun PvPGameScreen(
                         enabled = !state.isRemoteTurn,
                         scale = scale, offset = offset, isPanningMode = isPanningMode,
                         onOffsetChange = { offset = it }, onScaleChange = { scale = it }, onLineTapped = onLineTapped,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .alpha(if (state.isRemoteTurn) 0.6f else 1.0f)
+                            .then(
+                                if (state.isRemoteTurn) Modifier.drawBehind {
+                                    drawRect(Color.Black.copy(alpha = 0.2f))
+                                } else Modifier
+                            )
                     )
 
                     if (isLocalTurn) {

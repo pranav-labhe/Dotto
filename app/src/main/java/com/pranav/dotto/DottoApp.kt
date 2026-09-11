@@ -27,6 +27,7 @@ import com.pranav.dotto.presentation.game.DottoViewModel
 import com.pranav.dotto.presentation.game.GameScreen
 import com.pranav.dotto.presentation.game.PvPDottoViewModel
 import com.pranav.dotto.presentation.game.PvPGameScreen
+import com.pranav.dotto.presentation.result.PvPResultScreen
 import com.pranav.dotto.presentation.result.ResultScreen
 import com.pranav.dotto.presentation.setup.PvPSetup
 import com.pranav.dotto.presentation.setup.SetupScreen
@@ -131,14 +132,11 @@ fun DottoApp(
                                 },
                                 onRestart = pvpViewModel::playAgainSameConfig
                             )
-                            is DottoUiState.Result -> ResultScreen(
+                            is DottoUiState.Result -> PvPResultScreen(
                                 gameState = (pvpState as DottoUiState.Result).gameState,
+                                localPlayerId = pvpViewModel.localPlayerId,
                                 onPlayAgain = pvpViewModel::playAgainSameConfig,
-                                onNewSetup = {
-                                    pvpViewModel.restart()
-                                    viewModel.restart()
-                                },
-                                onNextLevel = viewModel::startNextLevel
+                                onBackToRoom = pvpViewModel::onBackToRoom
                             )
                             else -> PvPSetup(
                                 config = currentPvpState?.config ?: currentState.config,

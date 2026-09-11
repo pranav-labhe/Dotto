@@ -34,6 +34,9 @@ interface MoveTransport {
     /** Sends a quit game command. */
     fun sendQuitGame()
 
+    /** Sends a back to room command. */
+    fun sendBackToRoom()
+
     /** Sends a move to the opponent. */
     fun sendMove(type: Int, row: Int, column: Int)
 
@@ -49,6 +52,9 @@ interface MoveTransport {
     /** Called when a quit game signal is received. */
     fun onQuitGameReceived(callback: () -> Unit)
 
+    /** Called when a back to room signal is received. */
+    fun onBackToRoomReceived(callback: () -> Unit)
+
     /** Called when a move is received from the remote player. */
     fun onMoveReceived(callback: (Int, Int, Int) -> Unit)
 
@@ -56,7 +62,7 @@ interface MoveTransport {
     fun startDiscovery()
 
     /** Connect to a discovered opponent. */
-    fun connectTo(endpointId: String)
+    fun connectTo(endpointId: String, localName: String)
 
     /** Start being visible to challengers (Advertising). */
     fun startAdvertising(localName: String)

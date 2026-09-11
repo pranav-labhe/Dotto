@@ -18,10 +18,12 @@ class NearbyTransport(private val context: Context) : MoveTransport {
     override val connectionState: StateFlow<MoveTransport.ConnectionState> = _connectionState.asStateFlow()
 
     private var remoteEndpointId: String? = null
+    private var remoteEndpointName: String? = null
     private var levelCallback: ((Int) -> Unit)? = null
     private var startCallback: (() -> Unit)? = null
     private var restartCallback: (() -> Unit)? = null
     private var quitCallback: (() -> Unit)? = null
+    private var backToRoomCallback: (() -> Unit)? = null
     private var moveCallback: ((Int, Int, Int) -> Unit)? = null
     
     private val discoveredEndpoints = mutableListOf<MoveTransport.DiscoveredEndpoint>()
@@ -40,6 +42,7 @@ class NearbyTransport(private val context: Context) : MoveTransport {
                 3 -> startCallback?.invoke()
                 4 -> restartCallback?.invoke()
                 5 -> quitCallback?.invoke()
+                6 -> backToRoomCallback?.invoke()
             }
         }
 
@@ -48,6 +51,7 @@ class NearbyTransport(private val context: Context) : MoveTransport {
 
     private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpointId: String, connectionInfo: ConnectionInfo) {
+            remoteEndpointName = connectionInfo.endpointName
             connectionsClient.acceptConnection(endpointId, payloadCallback)
             _connectionState.value = MoveTransport.ConnectionState.Connecting(endpointId)
         }
@@ -56,7 +60,8 @@ class NearbyTransport(private val context: Context) : MoveTransport {
             when (result.status.statusCode) {
                 ConnectionsStatusCodes.STATUS_OK -> {
                     remoteEndpointId = endpointId
-                    _connectionState.value = MoveTransport.ConnectionState.Connected(endpointId, "Opponent")
+                    val name = remoteEndpointName ?: "Opponent"
+                    _connectionState.value = MoveTransport.ConnectionState.Connected(endpointId, name)
                     connectionsClient.stopAdvertising()
                     connectionsClient.stopDiscovery()
                 }
@@ -68,6 +73,7 @@ class NearbyTransport(private val context: Context) : MoveTransport {
 
         override fun onDisconnected(endpointId: String) {
             remoteEndpointId = null
+            remoteEndpointName = null
             _connectionState.value = MoveTransport.ConnectionState.Idle
         }
     }
@@ -97,6 +103,12 @@ class NearbyTransport(private val context: Context) : MoveTransport {
         sendPayload(buffer.array())
     }
 
+    override fun sendBackToRoom() {
+        val buffer = ByteBuffer.allocate(1)
+        buffer.put(6.toByte())
+        sendPayload(buffer.array())
+    }
+
     override fun sendMove(type: Int, row: Int, column: Int) {
         val buffer = ByteBuffer.allocate(13)
         buffer.put(2.toByte())
@@ -115,6 +127,7 @@ class NearbyTransport(private val context: Context) : MoveTransport {
     override fun onStartGameReceived(callback: () -> Unit) { startCallback = callback }
     override fun onRestartGameReceived(callback: () -> Unit) { restartCallback = callback }
     override fun onQuitGameReceived(callback: () -> Unit) { quitCallback = callback }
+    override fun onBackToRoomReceived(callback: () -> Unit) { backToRoomCallback = callback }
     override fun onMoveReceived(callback: (Int, Int, Int) -> Unit) { moveCallback = callback }
 
     override fun startDiscovery() {
@@ -135,9 +148,9 @@ class NearbyTransport(private val context: Context) : MoveTransport {
             .addOnFailureListener { e -> _connectionState.value = MoveTransport.ConnectionState.Error("Discovery failed: ${e.message}") }
     }
 
-    override fun connectTo(endpointId: String) {
+    override fun connectTo(endpointId: String, localName: String) {
         _connectionState.value = MoveTransport.ConnectionState.Connecting(endpointId)
-        connectionsClient.requestConnection("Player", endpointId, connectionLifecycleCallback)
+        connectionsClient.requestConnection(localName, endpointId, connectionLifecycleCallback)
             .addOnFailureListener { e -> _connectionState.value = MoveTransport.ConnectionState.Error("Connection request failed: ${e.message}") }
     }
 
@@ -153,6 +166,7 @@ class NearbyTransport(private val context: Context) : MoveTransport {
         connectionsClient.stopAdvertising()
         connectionsClient.stopDiscovery()
         remoteEndpointId = null
+        remoteEndpointName = null
         discoveredEndpoints.clear()
         _connectionState.value = MoveTransport.ConnectionState.Idle
     }

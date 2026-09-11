@@ -143,7 +143,7 @@ fun PvPSetup(
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = DottoPrimary)
                         ) {
-                            Text("HOST GAME (CHALLENGER)", fontWeight = FontWeight.Bold, color = DottoBackground)
+                            Text("CHALLENGER", fontWeight = FontWeight.Bold, color = DottoBackground)
                         }
 
                         Button(
@@ -152,7 +152,7 @@ fun PvPSetup(
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = DottoSecondary)
                         ) {
-                            Text("JOIN GAME (OPPONENT)", fontWeight = FontWeight.Bold, color = DottoBackground)
+                            Text("JOIN GAME", fontWeight = FontWeight.Bold, color = DottoBackground)
                         }
                     }
                 } else {
